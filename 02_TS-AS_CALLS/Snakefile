@@ -1,0 +1,202 @@
+configfile: "config.yaml"
+
+###### paths ###############
+DATA = config["general_paths"]["data"]
+SRC = config["general_paths"]["src"]
+CONDA_ENVS = config["general_paths"]["conda_envs"]
+AS_METADATA = config["paths"]["as_metadata"]
+VAST_OUT = config["paths"]["vast_out"]
+TS_CALL = config["paths"]["ts_call"]
+TAU_CALL = config["paths"]["tau_call"]
+DATABASE = config["paths"]["database"]
+GENE_ORTHOLOGIES_DIR = config["paths"]["gene_orthologies_dir"]
+### I still need to see if to keep these GO enrichments or not
+GO_TRANSFERS = config["paths"]["GO_transfers"]
+
+######## tools ############
+GET_TIS_AS = config["tools"]["get_tis_AS"]
+COMPUTE_TAU_FROM_PSI = config["tools"]["compute_tau_from_PSI"]
+RUN_GPROFILER2 = config["tools"]["run_gprofiler2"]
+ASSOCIATE_TS_EXONS_WITH_EXTRA_INFO = config["tools"]["associate_ts_exons_to_extra_info"]
+DEFINE_TS_AND_PATAS_EXONS = config["tools"]["define_ts_and_patas_exons"]
+COMPUTE_RANKED_PSI = config["tools"]["compute_ranked_PSI_across_tissues"]
+
+###### variables ###########
+MY_VERSION = config["variables"]["my_version"]
+ALL_SPECIES = config["variables"]["all_species"]
+ALL_TISSUES = config["variables"]["all_tissues"]
+VLOW_OPTION_DICT = config["variables"]["vlow_option_dict"]
+
+###### targets ##########
+CONFIG_FILES = expand("{path}/{species}/Config_groups-{species}.txt", path=VAST_OUT, species=ALL_SPECIES)
+BIL_CONS_INCLUSION_TABLES = expand("{path}/{species}/INCLUSION_LEVELS_FULL-{species}-bilaterian_conserved.tab", path=VAST_OUT, species=ALL_SPECIES)
+BIL_CONS_TS_EXONS_CALL = expand("{path}/bilaterian_conserved/{species}/TS-{species}-N{num_group}-Rep{num_rep}-{event_type}-general_stats.txt", path=TS_CALL, species=ALL_SPECIES, num_group=4, num_rep=1, event_type="EX")
+
+ALL_EXONS_TAU = expand("{path}/bilaterian_conserved/{species}-tau-all_EX_events.tab", path=TAU_CALL, species=ALL_SPECIES)
+ALL_TS_EXONS_EXTRA_INFO = expand("{path}/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_AS-associated_tissue_dPSI{min_dPSI_ts}-spec_pattern_PSI{min_PSI_spec}-all_extra_info.tab", path=TS_CALL, species=ALL_SPECIES, vlow_category="All", min_dPSI=10, min_dPSI_glob=25, num_group=4, num_rep=1, event_type="EX", min_dPSI_ts=15, min_PSI_spec=15)
+
+RANKED_PSI = expand("{path}/{species}-ranked_PSIs-all_EX_events.tab", path=TAU_CALL, species=ALL_SPECIES)
+
+TS_AND_PATAS_SETS = expand("{path}/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_types/All_AS_types-associated_tissue_dPSI{min_dPSI_ts}-spec_pattern_PSI{min_PSI_spec}-tau_{min_ts_tau}.tab", path=TS_CALL, species=ALL_SPECIES, vlow_category="All", min_dPSI=10, min_dPSI_glob=25, num_group=4, num_rep=1, event_type="EX", min_dPSI_ts=15, min_PSI_spec=15, min_ts_tau=0.60)
+
+####### rules ############
+rule all:	
+	input:
+		TS_AND_PATAS_SETS
+		#ALL_TS_EXONS_EXTRA_INFO,
+		#GO_ENRICHMENTS,
+		#RANKED_PSI,
+		#ALL_TS_EXON_COMBINATIONS,
+		#TAU_FILTERED_TS_EXONS,
+		#TAU_FILTERED_TS_EXONS_WITH_TISSUE,
+		#GO_ENRICHMENTS_CLASSIC,
+		#GO_ENRICHMENTS_TAU
+
+##################################################
+####### GENERATE GROUP FILES #####################
+##################################################
+
+rule generate_group_files:
+	input:
+		AS_METADATA+"/{species}_samples_info.tab"
+	output:
+		VAST_OUT+"/{species}/Config_groups-{species}.txt"
+	shell:
+		"""
+		echo -e "SampleName\tGroupName" > {output}; \
+		cat {input} | awk -v OFS="\t" '{{print $3,$2}}' | sort -k2,2 -k1,1 | uniq >> {output}
+		"""
+
+######################################################
+####### BILATERIAN CONSERVED INCLUSION TABLES ########
+######################################################
+
+##### VERY IMPORTANT: Here I am also filtering for only those exons that are CDS.
+rule filter_inclusion_table:
+	input:
+		inclusion_table = VAST_OUT+"/{species}/INCLUSION_LEVELS_FULL-{species}.tab",
+		event_geneID = DATABASE+"/event_gene_correspondences/{species}.Event-Gene.IDs.txt",
+		CDS_info =  DATABASE+"/CDS_info/{species}_ONTO_all-v4.tab",
+		bilaterian_conserved = "/users/mirimia/fmantica/projects/bilaterian_GE/data/gene_sets/All_version2/STRICT/Bilateria/conserved/Bilateria_conserved_orthogroups-EXPR_genes.txt"
+	output:
+		VAST_OUT+"/{species}/INCLUSION_LEVELS_FULL-{species}-bilaterian_conserved.tab"
+	shell:
+		"""
+		cat {input.inclusion_table} | awk 'NR==1' > {output}; \
+		cat {input.inclusion_table} | translate -a -k <(cat {input.event_geneID} | grep -v "BtaEX6026476" | sort | uniq | awk '$1!="" && $2!=""') 2 \
+                | filter_1col 3 <(cat {input.bilaterian_conserved} | cut -f3) | cut -f1,2,4- \
+		| filter_1col 2 <(cat {input.CDS_info} | cut -f2,8 | grep CDS | cut -f1) >> {output}
+		"""
+
+##################################################
+############## COMPUTE TAU  ######################
+##################################################
+
+#### NB: N and VLOW samples are not considered when computing the PSI
+#PSI is based on the averaged across tissues
+rule compute_tau_from_PSI_bilaterian_conserved:
+	input:
+		inclusion_table = VAST_OUT+"/{species}/INCLUSION_LEVELS_FULL-{species}-bilaterian_conserved.tab",
+		metadata = AS_METADATA+"/{species}_samples_info.tab"
+	output:
+		TAU_CALL+"/{species}-tau-all_EX_events.tab"
+	conda:
+		CONDA_ENVS+"/R4.2_AS_analysis.yml"
+	shell:
+		"""
+		Rscript {COMPUTE_TAU_FROM_PSI}	{input.inclusion_table} \
+						{input.metadata} \
+						{output}
+		"""
+
+
+##################################################
+####### GET TISSUE SPECIFIC EXONS ################
+##################################################
+
+### This is only for bilaterian conserved genes
+rule run_get_tis_AS:
+	input:
+		inclusion_table = VAST_OUT+"/{species}/INCLUSION_LEVELS_FULL-{species}-bilaterian_conserved.tab",
+		group_file = VAST_OUT+"/{species}/Config_groups-{species}.txt"
+	output:
+		stats = TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_AS-general_stats.txt",
+		ts_exons = TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_AS.tab",
+		tissue_dPSI = expand("{path}/{{species}}/{{vlow_category}}_dPSI{{min_dPSI}}-dPSI_glob{{min_dPSI_glob}}-N{{num_group}}-Rep{{num_rep}}-{{event_type}}/dPSIs_{tissue}.tab", path=TS_CALL, tissue=ALL_TISSUES)
+	params:
+		output_dir = TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}",
+		vlow_category = lambda wildcards: VLOW_OPTION_DICT[wildcards.vlow_category],
+		all_tissues = ",".join(ALL_TISSUES)
+	shell:
+		"""
+		cd {params.output_dir};
+		perl {GET_TIS_AS} {input.inclusion_table} \
+			-g {input.group_file} \
+			--min_dPSI {wildcards.min_dPSI} \
+			--min_dPSI_glob {wildcards.min_dPSI_glob} \
+			-test_tis {params.all_tissues} \
+			--min_rep {wildcards.num_rep} \
+			-N {wildcards.num_group} \
+			--print \
+			--event_type {wildcards.event_type} \
+			{params.vlow_category} \
+			> {output.stats}
+		"""
+
+
+###################################################################################
+##### ADD COVERAGE, TAU, SPECIALIZATION PATTERNS AND GENE OG INFO #################
+###################################################################################
+
+### We should require that the tissue with tissue-specificity has at least one sample that is different from N and VLOW
+### The idea is also that true TS will have PSI in other tissues very close to zero (true specialization pattern).
+### Importantly: all the filtering will be done a posteriori
+### The orthogroups used here is ALL and not EXPR. Why is that?
+rule asssociate_ts_exons_with_extra_info:
+	input:
+		ts_exons = TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_AS.tab",
+		inclusion_table = VAST_OUT+"/{species}/INCLUSION_LEVELS_FULL-{species}-bilaterian_conserved.tab",
+		group_file = VAST_OUT+"/{species}/Config_groups-{species}.txt",
+		tau_file = TAU_CALL+"/{species}-tau-all_EX_events.tab",
+		exons_gene_dict = DATABASE+"/event_gene_correspondences/{species}.Event-Gene.IDs.txt",
+		gene_orthogroups = GENE_ORTHOLOGIES_DIR+"/Bilateria_conserved_orthogroups-ALL_genes.txt"
+	output:
+		TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_AS-associated_tissue_dPSI{min_dPSI_ts}-spec_pattern_PSI{min_PSI_spec}-all_extra_info.tab"
+	conda:
+		CONDA_ENVS+"/R4.2_AS_analysis.yml"
+	shell:
+		"""
+		Rscript {ASSOCIATE_TS_EXONS_WITH_EXTRA_INFO}	--ts_exons {input.ts_exons} \
+								--inclusion_table {input.inclusion_table} \
+								--sample_tissue {input.group_file} \
+								--taus {input.tau_file} \
+								--exons_gene_dict {input.exons_gene_dict} \
+								--gene_orthogroups {input.gene_orthogroups} \
+								--min_dPSI_ts {wildcards.min_dPSI_ts} \
+								--specialization_PSI_cutoff {wildcards.min_PSI_spec} \
+								--output {output} 
+		"""
+
+##################################################
+####### DEFINE STRONG AND MILD TS-AS #############
+##################################################
+
+rule define_ts_and_patas_events:
+	input:
+		TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_AS-associated_tissue_dPSI{min_dPSI_ts}-spec_pattern_PSI{min_PSI_spec}-all_extra_info.tab"
+	output:
+		all_as = TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_types/All_AS_types-associated_tissue_dPSI{min_dPSI_ts}-spec_pattern_PSI{min_PSI_spec}-tau_{min_ts_tau}.tab",
+		ts_as = TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_types/TS_AS_selected-associated_tissue_dPSI{min_dPSI_ts}-spec_pattern_PSI{min_PSI_spec}-tau_{min_ts_tau}.tab",
+		patas = TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_types/PaTAS-associated_tissue_dPSI{min_dPSI_ts}-spec_pattern_PSI{min_PSI_spec}-tau_{min_ts_tau}.tab",
+		discarded = TS_CALL+"/{species}/{vlow_category}_dPSI{min_dPSI}-dPSI_glob{min_dPSI_glob}-N{num_group}-Rep{num_rep}-{event_type}/TS_types/discarded_events-associated_tissue_dPSI{min_dPSI_ts}-spec_pattern_PSI{min_PSI_spec}-tau_{min_ts_tau}.tab"
+	conda:
+		CONDA_ENVS+"/R4.2_AS_analysis.yml"
+	shell:
+		"""
+		Rscript {DEFINE_TS_AND_PATAS_EXONS}	--input {input} \
+							--output_all {output.all_as} \
+							--output_ts {output.ts_as} \
+							--output_patas {output.patas} \
+							--output_discarded {output.discarded} \
+							--tau_cutoff {wildcards.min_ts_tau}
+		"""

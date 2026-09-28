@@ -1,0 +1,231 @@
+configfile: "config.yaml"
+
+###### paths ###############
+CONDA_ENVS = config["general_paths"]["conda_envs"]
+GE_METADATA = config["paths"]["ge_metadata"]
+AS_METADATA = config["paths"]["as_metadata"]
+FASTQ_DIR = config["paths"]["fastq_dir"]
+VAST_OUT = config["paths"]["vast_out"]
+
+######## tools ############
+
+###### variables ###########
+MY_VERSION = config["variables"]["my_version"]
+ALL_SPECIES = config["variables"]["all_species"]
+MIXED_SPECIES = config["variables"]["mixed_species"] ### Species for which I generate the correspondences starting from two files.
+SINGLE_SPECIES = config["variables"]["single_species"] ### Species for which I generate the correspondencese starting from one file.
+MIN_READ_LEN = config["variables"]["min_read_len"]
+
+MISSING_SAMPLES_SE_DICT = {}
+MISSING_SAMPLES_SE_DICT["Dre"] = ["ERR1294271", "ERR1294272", "ERR1294273", "SRR2751024", "SRR2751023", "SRR2751022", "SRR2751034", "SRR2751033", "SRR2751032", "SRR850597", "SRR850589", "SRR850590", "SRR850591", "SRR850603", "SRR850601", "SRR850599", "SRR850598", "SRR850600"]
+MISSING_SAMPLES_SE_DICT["Bmo"] = ["DRR027750", "DRR027751"]
+### These Ame samples were removed because they do not respect the minimal length requirements for vast-tools
+#MISSING_SAMPLES_SE_DICT["Ame"] = ["SRR7908187", "SRR7908186", "SRR7908188", "SRR7908189", "SRR7908190", "SRR7908191"]
+
+MISSING_SAMPLES_PE_DICT = {}
+MISSING_SAMPLES_PE_DICT["Dre"] = ["ERR4029231", "ERR023146", "ERR023149", "ERR035547", "SRR1524243", "SRR1609747", "SRR1609748", "SRR1562531", "SRR1524241", "SRR1609753", "SRR1609754", "SRR4017375", "SRR4017374", "SRR4017373", "SRR1524238", "ERR023144", "ERR023147", "ERR035545", "SRR1609735", "SRR1609736", "SRR6841460", "SRR6841461", "SRR6841462", "SRR6841457", "SRR6841458", "SRR6841459", "SRR6841472", "SRR6841473", "SRR6841474", "SRR6841469", "SRR6841470", "SRR6841471"]
+MISSING_SAMPLES_PE_DICT["Bmo"] = ["SRR10035697", "SRR10035696"]
+MISSING_SAMPLES_PE_DICT["Ame"] = ["SRR7770435", "SRR7770432", "SRR7770429", "SRR11940309"]
+
+SPECIES_SAMPLES_DICT = {}
+SPECIES_SAMPLES_DICT["Dre"] = ["Brain_a_18C", "Brain_a_28C", "Brain_a_a1", "Brain_a_a2", "Brain_a_a3", "Brain_a_b", "Gut_a_a", "Kidney_a_18C", "Kidney_a_28C", "Kidney_a_a_a", "Kidney_a_a_b", "Kidney_a_a_c", "Kidney_a_b", "Muscle_a_18C", "Muscle_a_28C", "Muscle_a_a", "Muscle_a_b", "Muscle_c_a", "Muscle_c_b", "Muscle_c_c", "Ovary_b_a1", "Ovary_b_a2", "Ovary_b_a3", "Ovary_c_a1", "Ovary_c_a2", "Ovary_c_a3", "Skin_a_a", "Skin_a_b", "Skin_a_c", "Skin_b_a", "Skin_b_b", "Skin_b_c", "Skin_b_d", "Skin_b_e", "Skin_b_f", "Skin_c_24m_a", "Skin_c_24m_b", "Skin_c_24m_c", "Skin_c_24m_d", "Skin_c_24m_e", "Skin_c_5m_a", "Skin_c_5m_b", "Skin_c_5m_c", "Skin_c_5m_d", "Testis_b_a1", "Testis_b_a2", "Testis_b_a3", "Testis_c_a1", "Testis_c_a2", "Testis_c_a3"] 
+SPECIES_SAMPLES_DICT["Bmo"] = ["FatBody_Larva_Intact_c2", "FatBody_Larva_Intact_c3", "Fatbody_Moth_d1_a_a", "Fatbody_Moth_d1_a_b"]
+#SPECIES_SAMPLES_DICT["Ame"] = ["Ovary_Forager_a_a", "Ovary_Forager_a_b", "Ovary_Forager_a_c", "Ovary_Forager_QueenLess_a", "Ovary_Forager_QueenLess_b", "Ovary_Forager_QueenRight_a", "Ovary_Forager_QueenRight_b", "Ovary_Queen_d_a", "Ovary_Queen_d_b", "Testis_Drone_f"]
+SPECIES_SAMPLES_DICT["Ame"] = ["Ovary_Forager_a_a", "Ovary_Forager_a_b", "Ovary_Forager_a_c", "Testis_Drone_f"]
+
+###### targets ##########
+MIXED_SPECIES_METASAMPLES = expand("{path}/{species}_samples_info.tab", path=AS_METADATA, species=MIXED_SPECIES)
+SINGLE_SPECIES_METASAMPLES = expand("{path}/{species}_samples_info.tab", path=AS_METADATA, species=SINGLE_SPECIES)
+
+MISSING_SAMPLES_SE_TARGET = []
+MISSING_SAMPLES_PE_TARGET = []
+for my_species in ["Dre", "Bmo", "Ame"]:
+  if my_species != "Ame":
+    MISSING_SAMPLES_SE_TARGET = MISSING_SAMPLES_SE_TARGET + expand("{path}/{species}/fastq-downloaded/{SRA}.fastq.gz",path=FASTQ_DIR, species=my_species, SRA=MISSING_SAMPLES_SE_DICT[my_species])
+  MISSING_SAMPLES_PE_TARGET = MISSING_SAMPLES_PE_TARGET + expand("{path}/{species}/fastq-downloaded/{SRA}_{number}.fastq.gz",path=FASTQ_DIR, species=my_species, SRA=MISSING_SAMPLES_PE_DICT[my_species], number=[1,2])
+
+RENAMED_FASTQS = expand("{path}/{species}/fastq-downloaded_renamed/renamed_fastq.txt", path=FASTQ_DIR, species=["Dre"]) 
+VTS_ALIGN_OUT = []
+for my_species in ["Dre"]:
+  VTS_ALIGN_OUT = VTS_ALIGN_OUT + expand("{path}/new_samples/{species}/to_combine/{sample}.eej2", path=VAST_OUT, species=my_species, sample=SPECIES_SAMPLES_DICT[my_species])
+
+####### rules ############
+rule all:	
+	input:
+		MISSING_SAMPLES_SE_TARGET,
+		MISSING_SAMPLES_PE_TARGET,
+		RENAMED_FASTQS,
+		VTS_ALIGN_OUT
+
+##################################################
+####### GET OLD_NEW CORRESPONDENCES ##############
+##################################################
+
+### Map the sample names of the samples that have already been run to my sample names
+rule map_sample_names_mixed_species:
+	input:
+		new_samples_names = GE_METADATA+"/{species}_samples_info.tab",
+		vast_tools_correspondences = AS_METADATA+"/vast_tools_correspondences/{species}-SRA_samples.txt"
+	output:
+		AS_METADATA+"/{species}_samples_info.tab"
+	shell:
+		"""
+		cat {input.new_samples_names} | cut -f1-5,9 | translate -a -v -e "Missing" <(cat {input.vast_tools_correspondences} | cut -f1,2 | grep -v house) 5 \
+		| awk -v OFS="\t" '{{if ($5~"house") {{$6=$4}}; if ($5=="SRA") {{$6="Original_vast_name"}} print $0}}' \
+		| awk -v OFS="\t" '{{if ($7=="NA") {{$7="/users/mirimia/projects/vast-tools/vast_out/"$1"/INITIAL"}}; print $0}}' > {output}
+		"""
+
+rule map_sample_names_single_species:
+	input:
+		GE_METADATA+"/{species}_samples_info.tab"
+	output:
+		AS_METADATA+"/{species}_samples_info.tab"
+	shell:
+		"""
+		cat {input} | awk -v OFS="\t" '{{print $1,$2,$3,$4,$5,$4}}' | awk -v OFS="\t" '{{if ($5=="SRA") {{$6="Original_vast_name"}}; print $0}}' > {output}
+		"""
+
+##################################################
+####### RUN VAST-TOOL FOR MISSING SAMPLES ########
+##################################################
+
+############# DOWNLOAD FASTQS ######################
+rule prefetch_fastq:		
+	output:
+		FASTQ_DIR+"/{species}/fastq-downloaded/{SRA}.sra"
+	shell:
+		"""
+		prefetch {wildcards.SRA} 	--output-file {output} \
+						--check-all \
+						--max-size 100000000 \
+						--log-level info
+		"""
+
+#--max-size: Maximum file size to download in KB (exclusive). Default: 20G
+rule download_SE_fastq:
+	input:
+		FASTQ_DIR+"/{species}/fastq-downloaded/{SRA}.sra"
+	output:
+		FASTQ_DIR+"/{species}/fastq-downloaded/{SRA, .+(?<!_[1,2])}.fastq"
+	params:
+		outdir = FASTQ_DIR+"/{species}/fastq-downloaded"
+	shell:
+		"""
+		fastq-dump	{input} \
+				--outdir {params.outdir} \
+				--split-e \
+				--minReadLen {MIN_READ_LEN} \
+				--log-level info; \
+		rm {input}
+		"""
+
+rule download_PE_fastq:
+	input:
+		FASTQ_DIR+"/{species}/fastq-downloaded/{SRA}.sra"
+	output:
+		forward_reads = FASTQ_DIR+"/{species}/fastq-downloaded/{SRA}_1.fastq",
+		rerverse_reads = FASTQ_DIR+"/{species}/fastq-downloaded/{SRA}_2.fastq",
+	params:
+		output_dir = FASTQ_DIR+"/{species}/fastq-downloaded"
+	shell:
+		"""
+		fastq-dump 	{input} \
+				--outdir {params.output_dir} \
+				--split-e \
+				--minReadLen {MIN_READ_LEN} \
+				--log-level info; \
+		rm {input}
+		"""
+
+rule compress_fastq:
+	input:
+		FASTQ_DIR+"/{species}/fastq-downloaded/{SRA_suffix}.fastq"
+	output:
+		FASTQ_DIR+"/{species}/fastq-downloaded/{SRA_suffix}.fastq.gz"
+	shell:
+		"""
+		pigz {input} -9
+		"""
+
+rule rename_fastq:
+	input:
+		PE_forward = lambda wildcards: expand("{path}/{{species}}/fastq-downloaded/{SRA}_1.fastq.gz", path=FASTQ_DIR, SRA=MISSING_SAMPLES_PE_DICT[wildcards.species]),
+		PE_reverse = lambda wildcards: expand("{path}/{{species}}/fastq-downloaded/{SRA}_2.fastq.gz", path=FASTQ_DIR, SRA=MISSING_SAMPLES_PE_DICT[wildcards.species]),
+		SE = lambda wildcards: expand("{path}/{{species}}/fastq-downloaded/{SRA}.fastq.gz", path=FASTQ_DIR, SRA=MISSING_SAMPLES_SE_DICT[wildcards.species]),
+		metadata = GE_METADATA+"/{species}_samples_info.tab"
+	output:
+		my_log = FASTQ_DIR+"/{species}/fastq-downloaded_renamed/renamed_fastq.txt"
+	params:
+		output_dir = FASTQ_DIR+"/{species}/fastq-downloaded_renamed"
+	run:
+		import pandas as pd
+		import os
+		import re
+
+		### Header: Species, Tissue, Group, Sample, SRA, Read_number, Read_len, SE_PE, Path
+		output_log = open(output.my_log, "w")
+		metadata_df = pd.read_table(input.metadata, sep="\t", index_col=False, header=0)
+		for my_file in input.PE_forward:
+		  SRA_ID = re.sub("_1.fastq.gz", "", os.path.basename(my_file))
+		  sample_name = list(metadata_df.loc[metadata_df["SRA"]==SRA_ID]["Sample"])[0]
+		  new_filename = params.output_dir+"/"+sample_name+"_1.fastq.gz"
+		  ln_command = "ln -s %s %s" % (my_file, new_filename)
+		  os.system(ln_command)
+		  output_log.write(my_file+"\t"+new_filename+"\n")
+		for my_file in input.PE_reverse:
+		  SRA_ID = re.sub("_2.fastq.gz", "", os.path.basename(my_file))
+		  sample_name = list(metadata_df.loc[metadata_df["SRA"]==SRA_ID]["Sample"])[0]
+		  new_filename = params.output_dir+"/"+sample_name+"_2.fastq.gz"
+		  ln_command = "ln -s %s %s" % (my_file, new_filename)
+		  os.system(ln_command)
+		  output_log.write(my_file+"\t"+new_filename+"\n")
+		for my_file in input.SE:
+		  SRA_ID = re.sub(".fastq.gz", "", os.path.basename(my_file))
+		  sample_name = list(metadata_df.loc[metadata_df["SRA"]==SRA_ID]["Sample"])[0]
+		  new_filename = params.output_dir+"/"+sample_name+".fastq.gz"
+		  ln_command = "ln -s %s %s" % (my_file, new_filename)
+		  os.system(ln_command)
+		  output_log.write(my_file+"\t"+new_filename+"\n")
+		output_log.close()
+
+
+rule run_VTS_align_SE:
+	input:
+		fastq = FASTQ_DIR+"/{species}/fastq-downloaded_renamed/{sample}.fastq.gz",
+	output:
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample, .+(?<!_[1,2])}.eej2",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample, .+(?<!_[1,2])}.exskX",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample, .+(?<!_[1,2])}.info",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample, .+(?<!_[1,2])}.IR2",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample, .+(?<!_[1,2])}.IR.summary_v2.txt",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample, .+(?<!_[1,2])}.micX",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample, .+(?<!_[1,2])}.MULTI3X"
+	params:
+		out_dir = VAST_OUT+"/new_samples/{species}"
+	conda:
+		CONDA_ENVS+"/R4.yml"
+	shell:
+		"""
+		vast-tools align {input} --sp {wildcards.species} --output {params.out_dir}
+		"""
+
+rule run_VTS_align_PE:
+	input:
+		fastq1 = FASTQ_DIR+"/{species}/fastq-downloaded_renamed/{sample}_1.fastq.gz",
+		fastq2 = FASTQ_DIR+"/{species}/fastq-downloaded_renamed/{sample}_2.fastq.gz",
+	output:
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample}.eej2",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample}.exskX",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample}.info",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample}.IR2",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample}.IR.summary_v2.txt",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample}.micX",
+		VAST_OUT+"/new_samples/{species}/to_combine/{sample}.MULTI3X"
+	params:
+		out_dir = VAST_OUT+"/new_samples/{species}"
+	conda:
+		CONDA_ENVS+"/R4.yml"
+	shell:
+		"""
+		vast-tools align {input.fastq1} {input.fastq2} --sp {wildcards.species} --output {params.out_dir}
+		"""

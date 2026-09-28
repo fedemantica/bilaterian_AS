@@ -1,0 +1,303 @@
+configfile: "config.yaml"
+
+###### paths ###############
+DATA = config["general_paths"]["data"]
+SRC = config["general_paths"]["src"]
+CONDA_ENVS = config["general_paths"]["conda_envs"]
+ALL_EXTRAEXONS = config["paths"]["all_extraexons_dir"]
+ALL_REFERENCE_ANNOT = config["paths"]["all_reference_annot_dir"]
+ALL_GTFS = config["paths"]["all_gtfs_dir"]
+ALL_GENOMES_DIR = config["paths"]["all_genomes_dir"]
+GE_METADATA = config["paths"]["ge_metadata"]
+AS_METADATA = config["paths"]["as_metadata"]
+VAST_OUT = config["paths"]["vast_out"]
+TS_CALL_DIR = config["paths"]["ts_call_dir"]
+DATABASE = config["paths"]["DB"]
+AS_VS_GE_REG_DIR = config["paths"]["AS_vs_GE_reg_dir"]
+GE_TS_GAINS_LOSSES = config["paths"]["GE_ts_gains_losses"]
+GE_TS_CALL = config["paths"]["GE_ts_call"]
+BROCCOLI = config["paths"]["broccoli"]
+GENE_SETS_DIR = config["paths"]["gene_sets_dir"]
+EXORTHIST_DIR = config["paths"]["exorthist_dir"]
+DIS_DOM_DIR = config["paths"]["dis_dom_dir"]
+ALL_REFERENCE_ANNOT_DIR = config["paths"]["all_reference_annot_dir"]
+
+######## tools #############
+RUN_COMPARE_EXONS = config["tools"]["run_compare_exons"]
+ADD_INFO_TO_EXON_ORTHOGROUPS = config["tools"]["add_info_to_exon_orthogroups"]
+GENERATE_EXTREE_INPUT = config["tools"]["generate_extree_input"]
+RSCRIPT = config["tools"]["rscript"]
+
+###### variables ###########
+MY_VERSION = config["variables"]["my_version"]
+ALL_SPECIES = config["variables"]["all_species"]
+ALL_TISSUES = config["variables"]["all_tissues"]
+REG_TYPES = config["variables"]["reg_types"]
+PROCESSED_ORTHOLOGIES_DIR = config["variables"]["processed_orthologies_dir"]
+TS_CALL_PARAMS = config["variables"]["ts_call_params"]
+
+#This is some shitty coding that will be removed
+import itertools
+ORTHOLOGY_SPECIES_PAIRS_1 = [element[0]+"-"+element[1] for element in list(itertools.combinations(ALL_SPECIES, 2))]  
+ORTHOLOGY_SPECIES_PAIRS_2 = [element[1]+"-"+element[0] for element in list(itertools.combinations(ALL_SPECIES, 2))]
+ALL_ORTHOLOGY_PAIRS = ORTHOLOGY_SPECIES_PAIRS_1 + ORTHOLOGY_SPECIES_PAIRS_2
+
+###### targets #########
+TS_INFO_FILES = expand("{path}/{processed_orthologies_dir}/{rand_num}/ts_info_files/{species}-bilaterian_conserved-ts_info.tab", path=DATA, species=ALL_SPECIES, processed_orthologies_dir=PROCESSED_ORTHOLOGIES_DIR, rand_num=["reference", "randomization_1"])
+COMPARE_EXONS_OUTPUT = expand("{path}/{processed_orthologies_dir}/{rand_num}/compare_exon_sets_inputs/{tissue}/Compare_exons_summary_input-{species_pair}.txt", path=DATA, tissue=ALL_TISSUES, species_pair=ALL_ORTHOLOGY_PAIRS, processed_orthologies_dir=PROCESSED_ORTHOLOGIES_DIR, rand_num=["reference"])
+#EXON_ORTHOGROUPS_ADDED_INFO = expand("{path}/{processed_orthologies_dir}/exorthist_output/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input.tab", path=DATA, processed_orthologies_dir=PROCESSED_ORTHOLOGIES_DIR, exon_OG_category = ["clusters", "reclustered"])
+#FILTERED_EXON_ORTHOGROUPS_ADDED_INFO = expand("{path}/{processed_orthologies_dir}/exorthist_output/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input-TS-AS_filtered.tab", path=DATA, processed_orthologies_dir=PROCESSED_ORTHOLOGIES_DIR, exon_OG_category = ["clusters", "reclustered"])
+
+EXON_ORTHOGROUPS_ADDED_INFO = expand("{path}/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input.tab", path=DATA, processed_orthologies_dir=PROCESSED_ORTHOLOGIES_DIR, exon_OG_category = ["clusters", "reclustered"])
+FILTERED_EXON_ORTHOGROUPS_ADDED_INFO = expand("{path}/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input-TS-AS_filtered.tab", path=DATA, processed_orthologies_dir=PROCESSED_ORTHOLOGIES_DIR, exon_OG_category = ["clusters", "reclustered"])
+
+#EXON_ORTHOGROUPS_ADDED_INFO = expand("{path}/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input.tab", path=EXORTHIST_DIR, exon_OG_category = ["clusters", "reclustered"])
+#DOMAIN_DISORDERED_FILES = expand("{path}/EX_clusters-vastID_exons-{feature}_info.tab", path=EXORTHIST_DIR, feature=["DIS", "DOM"])
+
+
+####### rules ############
+rule all:	
+	input:
+		#expand(DATA+"/{processed_orthologies_dir}/randomization_1/ts_info_file/{species}-bilaterian_conserved-ts_info.tab", processed_orthologies_dir=PROCESSED_ORTHOLOGIES_DIR, species=ALL_SPECIES)
+		#FILTERED_EXON_ORTHOGROUPS_ADDED_INFO,
+		#EXON_ORTHOGROUPS_ADDED_INFO,
+		COMPARE_EXONS_OUTPUT,
+		#EXORTHIST_DIR+"/EX_clusters-added_info-bilaterian_conserved.tab",
+		#DOMAIN_DISORDERED_FILES
+	
+
+
+##################################################
+####### ADD INFO TO EX ORTHOGROUPS ###############
+##################################################
+
+#The filename of the second input changed for the new runs: from _corrected_extraexons.tab to _extraexons_corrected.tab
+rule add_info_to_exon_orthogroups:
+	input:
+		ex_orthogroups = EXORTHIST_DIR+"/EX_{exon_OG_category}.tab",
+		vastID_coord_dict = expand("{path}/{species}_extraexons_corrected.tab", path=ALL_EXTRAEXONS, species=ALL_SPECIES),
+		overlapping_groups = EXORTHIST_DIR+"/overlapping_EXs_by_species.tab"
+	output:
+		DATA+"/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info.tab"
+		#EXORTHIST_DIR+"/EX_{exon_OG_category}-added_info.tab"
+	shell:
+		"""
+		python {ADD_INFO_TO_EXON_ORTHOGROUPS}	--ex_orthogroups {input.ex_orthogroups} \
+							--vastID_coords {input.vastID_coord_dict} \
+							--overlapping_groups {input.overlapping_groups} \
+							--output {output}
+		"""
+
+
+######################################################################
+######## FILTER FOR BILATERIAN CONSERVED ORTHOGROUPS #################
+######################################################################
+
+rule filter_for_bilaterian_conserved_OGs:
+	input:
+		ex_orthogroups = DATA+"/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info.tab",
+		#ex_orthogroups = EXORTHIST_DIR+"/EX_{exon_OG_category}-added_info.tab",
+		bilaterian_conserved_OGs = "/users/mirimia/fmantica/projects/bilaterian_GE/data/gene_sets/All_version2/STRICT/Bilateria/conserved/Bilateria_conserved_orthogroups-EXPR_genes.txt"
+	output:
+		DATA+"/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info-bilaterian_conserved.tab"
+		#EXORTHIST_DIR+"/EX_{exon_OG_category}-added_info-bilaterian_conserved.tab"
+	run:
+		import pandas as pd
+		import re
+
+		### Upload exon orthogroups
+		exon_OG_df = pd.read_table(str(input.ex_orthogroups), sep="\t", header=0, index_col=False)
+		exon_OG_df["OG_ID"] = [re.sub("\..*", "", element) for element in list(exon_OG_df["ExCluster_ID"])] #Add gene orthogroup ID
+		### Upload bilaterian conserved gene orthogroups
+		gene_OG_df = pd.read_table(str(input.bilaterian_conserved_OGs), sep="\t", header=None, index_col=False, names=["OG_ID", "Species", "GeneID"])
+		bilaterian_conserved_OG_IDs_list = list(set(list(gene_OG_df["OG_ID"])))
+		### Filter exon orthogroups and save to file
+		bilaterian_conserved_exon_OG_df = exon_OG_df.loc[exon_OG_df["OG_ID"].isin(bilaterian_conserved_OG_IDs_list)]		
+		bilaterian_conserved_exon_OG_df.to_csv(str(output), sep="\t", header=True, index=False, na_rep="NA")
+
+
+##################################################
+####### CREATE EXTREE INPUT  #####################
+##################################################
+
+
+rule generate_extree_input:
+	input:
+		ex_orthogroups = DATA+"/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info-bilaterian_conserved.tab",
+		#ex_orthogroups = EXORTHIST_DIR+"/EX_{exon_OG_category}-added_info-bilaterian_conserved.tab",
+		gene_orthogroups = "/users/mirimia/fmantica/projects/mixed_files/manu_orthogroups_gene_names/Bilateria_conserved_orthogroups-gene_names.tab"
+	output:
+		DATA+"/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input.tab"
+		#DATA+"/{processed_orthologies_dir}/exorthist_output/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input.tab"
+		#EXORTHIST_DIR+"/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input.tab"
+	params:
+		ordered_tissues = ",".join(ALL_TISSUES),
+		ordered_species = ",".join(ALL_SPECIES),
+		ts_call_dir = TS_CALL_DIR+"/bilaterian_conserved",
+		#ts_call_dir = DATA+"/ts_call",
+		dPSI_prefix = TS_CALL_PARAMS+"/dPSIs_",
+		all_reference_annot_dir = ALL_REFERENCE_ANNOT_DIR
+	shell:
+		"""
+		{RSCRIPT} {GENERATE_EXTREE_INPUT} 	{input.ex_orthogroups} \
+							{input.gene_orthogroups} \
+							{output} \
+							{params.ordered_tissues} \
+							{params.ordered_species} \
+							{params.ts_call_dir} \
+							{params.dPSI_prefix} \
+							{params.all_reference_annot_dir}
+		"""
+
+
+
+### Filter ExTree input to only exon orthogroups that contain at least one TS-AS exon in any species
+### Header: ExOG_ID	GeneID	Coordinate	Species	Membership_score	VastID	Overlap_groupID	OG_ID	info	exon_length	Neural_PSI	Testis_PSI	Ovary_PSI	Muscle_PSI	Kidney_PSI	Epithelial_PSI	DigestiveTract_PSI	Adipose_PSI	GeneName
+### IMPORTANT: this rule depends on the filename
+rule filter_extree_input:
+	input:
+		extree_input = DATA+"/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input.tab",
+		#extree_input = DATA+"/{processed_orthologies_dir}/exorthist_output/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input.tab",
+		TS_AS = expand("{path}/{species}/reference/{species}-AS_regulated_genes-with_event.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES)
+	output:
+		extree_output = DATA+"/{processed_orthologies_dir}/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input-TS-AS_filtered.tab"
+		#extree_output = DATA+"/{processed_orthologies_dir}/exorthist_output/EX_{exon_OG_category}-added_info-bilaterian_conserved-ExTree_input-TS-AS_filtered.tab"
+	run:
+		import pandas as pd
+		import os
+
+		### Read inputs
+		extree_input_df = pd.read_table(str(input.extree_input), sep="\t", index_col=False, header=0)
+		all_TS_AS_genes_df = pd.DataFrame()
+		for file in (list(input.TS_AS)):
+		  ### Isolate species id
+		  filename = os.path.basename(file)
+		  species = filename.split("-AS_regulated_genes-with_event.tab")[0]
+		  ### Upload species df
+		  species_df = pd.read_table(str(file), index_col=False, header=None, names=["GeneID", "VastID", "Tissue", "Direction"])
+		  species_df["Species"] = species
+		  all_TS_AS_genes_df = pd.concat([all_TS_AS_genes_df, species_df])
+		### Isolate gene orthogroups of interest
+		selected_ExOG_ID = (extree_input_df[["ExOG_ID", "Species", "GeneID", "VastID"]].merge(all_TS_AS_genes_df, on=["GeneID", "Species", "VastID"], how="inner")["ExOG_ID"])
+		extree_output_df = extree_input_df.loc[extree_input_df["ExOG_ID"].isin(selected_ExOG_ID)].copy()
+		### Save to file
+		extree_output_df.to_csv(str(output.extree_output), sep="\t", header=True, index=False, na_rep="NA")
+
+
+##################################################
+####### REGULATORY CONSERVATION ##################
+##################################################
+
+#1   GENE                     SCYL3
+#2   EventID                  HsaEX0056692
+#3   COORD                    chr1:169855796-169855857
+#4   LENGTH                   62
+#5   FullCO                   chr1:169859041,169855796-169855857+169855932+169855957,169854964
+#6   COMPLEX                  S
+#7   Tissue                   Muscle
+#8   Direction                UP
+#9   N_Rep                    3
+#10  Total_N_others           7
+#11  Av_Tis                   54.06
+#12  Av_Others                15.2
+#13  dPSI                     38.86
+#14  SD_Tis                   27.84
+#15  SD_Others                8.87
+#16  Min_Others               6.17
+#17  Max_Others               28.61
+#18  Valid_Tis                Adipose,DigestiveTract,Epithelial,Kidney,Muscle,Neural,Ovary,Testis
+#19  dPSI_First_Second        25.45
+#20  dPSI_Second_Third        4.05
+#21  dPSI_First_Third         29.5
+#22  Second_Tis               Testis
+#23  Associated_Tis           Muscle
+#24  Tissue_coverage_First    YES_COV
+#25  Tissue_coverage_Second   YES_COV
+#26  Specialized_pattern      NO_SPEC
+#27  Associated_Tis_coverage  Muscle
+#28  Tau                      0.718874688416584
+#29  GeneID                   ENSG00000000457
+#30  OG_ID                    GF_010897
+#31  Exon_type                PATAS
+
+rule generate_ts_info_files_reference:
+	input:
+		ts_exons_out = TS_CALL_DIR+"/bilaterian_conserved/{species}/"+TS_CALL_PARAMS+"/TS_types/All_AS_types-associated_tissue_dPSI15-spec_pattern_PSI15-tau_0.6.tab",
+		filtered_ts_exons = AS_VS_GE_REG_DIR+"/{species}/reference/{species}-AS_regulated_genes-with_event.tab"
+	output:
+		DATA+"/{processed_orthologies_dir}/reference/ts_info_file/{species}-bilaterian_conserved-ts_info.tab"
+	run:
+		import pandas as pd
+
+		### Read in files
+		ts_exons_df = pd.read_table(str(input.ts_exons_out), sep="\t", index_col=False, header=0)
+		filtered_ts_exons_df = pd.read_table(str(input.filtered_ts_exons), sep="\t", index_col=False, header=None, names=["GeneID", "EventID", "Tissue", "Direction"])
+		selected_exons = list(filtered_ts_exons_df["EventID"])
+		### Filter for selected exons only
+		ts_exons_df = ts_exons_df[["GeneID", "COORD", "EventID", "Associated_Tis", "Direction"]]
+		ts_exons_df = ts_exons_df.loc[ts_exons_df["EventID"].isin(selected_exons)].copy()
+		ts_exons_df.to_csv(str(output), header=False, index=False, sep="\t", na_rep="NA")
+
+#rule generate_ts_info_randomizations:
+#	input:
+#		AS_regulated = AS_VS_GE_REG_DIR+"/{species}/randomization_1/{species}-AS_regulated_genes-with_event.tab",
+#		coverage_exons = expand(TS_CALL_DIR+"/bilaterian_conserved/{{species}}/"+TS_CALL_PARAMS+"/dPSIs_{tissue}.tab", tissue=ALL_TISSUES)
+#	output:
+#		DATA+"/{processed_orthologies_dir}/randomization_1/ts_info_file/{species}-bilaterian_conserved-ts_info.tab"
+#	run:
+#
+#		import pandas as pd
+#		### Header output: ENSXETG00000000217	chr5:11631541-11631597	XtrEX0058194	Neural	UP
+#		### Header input reg: ENSG00000171988	HsaEX6088576	Neural	UP
+#		### Read in files
+#		rand_exons_df =  pd.read_table(str(input.AS_regulated), sep="\t", index_col=False, header=None, names=["GeneID", "EventID", "Tissue", "Direction"])
+#		all_tissues_cov_exons_df = pd.DataFrame()
+#		for file in input.coverage_exons:
+#		  input_df = pd.read_table(str(file), sep="\t", index_col=False, header=0)[["EventID", "COORD"]]
+#		  all_tissues_cov_exons_df = pd.concat([all_tissues_cov_exons_df, input_df])
+#		### Remove duplicated and transform to dictionary
+#		all_tissues_cov_exons_df = all_tissues_cov_exons_df.drop_duplicates()
+#		all_tissues_cov_exons_dict = pd.Series(data=all_tissues_cov_exons_df.COORD.values, index=all_tissues_cov_exons_df.EventID).to_dict()
+#		### Add Coordinates and reorder
+#		rand_exons_df["COORD"] = rand_exons_df["EventID"].map(all_tissues_cov_exons_dict)
+#		rand_exons_df = rand_exons_df[["GeneID", "COORD", "EventID", "Tissue", "Direction"]]
+#		### Save to file
+#		rand_exons_df.to_csv(str(output), header=False, index=False, sep="\t", na_rep="NA")
+
+#Create inputs for all tissue and species
+#This should work even if the Associated tissue contains ";" and if there are "NO_TISSUE"
+rule generate_compare_exons_input:
+	input:
+		DATA+"/{processed_orthologies_dir}/reference/ts_info_file/{species}-bilaterian_conserved-ts_info.tab"
+	output:
+		DATA+"/{processed_orthologies_dir}/reference/compare_exon_sets_inputs/{tissue}/{species}-{tissue}_exon_list.txt"
+	shell:
+		"""
+		cat {input} | grep "{wildcards.tissue}" | awk -v OFS="\t" '$NF=="UP" {{print $1,$2,$NF}}' > {output} || touch {output}
+		"""
+
+### Run compare exons for all species pairs and the selected exons
+#This is a bit weird, because I have to use the output from the previous run. Unfortunately, the species identifiers do not match.
+#It just requires some adjusting.
+rule compare_exons_runs:
+	input:
+		species1_exons = DATA+"/{processed_orthologies_dir}/{rand_num}/compare_exon_sets_inputs/{tissue}/{species1}-{tissue}_exon_list.txt",
+		species2_exons = DATA+"/{processed_orthologies_dir}/{rand_num}/compare_exon_sets_inputs/{tissue}/{species2}-{tissue}_exon_list.txt",
+		main_output = EXORTHIST_DIR+"/EX_reclustered.tab"
+	output:
+		DATA+"/{processed_orthologies_dir}/{rand_num}/compare_exon_sets_inputs/{tissue}/Conserved_exons-{species1}-{species2}.tab",
+		DATA+"/{processed_orthologies_dir}/{rand_num}/compare_exon_sets_inputs/{tissue}/Compare_exons_summary_input-{species1}-{species2}.txt"
+	params:
+		main_output_dir = EXORTHIST_DIR,
+		output_dir = DATA+"/{processed_orthologies_dir}/{rand_num}/compare_exon_sets_inputs/{tissue}"
+	shell:
+		"""
+		cd {params.output_dir}; \
+		perl {RUN_COMPARE_EXONS} -sp1 {wildcards.species1} \
+					-sp2 {wildcards.species2} \
+					-exon_list_sp1 {input.species1_exons} \
+					-main_folder {params.main_output_dir} \
+					-exon_list_sp2 {input.species2_exons} \
+					-dPSI_info qual_call \
+					-print_out
+		"""

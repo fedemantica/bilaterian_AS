@@ -1,0 +1,36 @@
+general_paths:
+  data: "/users/mirimia/fmantica/projects/bilaterian_AS/data"
+  src: "/users/mirimia/fmantica/projects/bilaterian_AS/src"
+  conda_envs: "/users/mirimia/fmantica/projects/bilaterian_AS/src/conda_envs"
+
+paths:
+  all_extraexons_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow/ALL_EXTRAEXONS"
+  all_reference_annot_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow/ALL_REFERENCE_ANNOT"
+  all_gtfs_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow/ALL_GTFS"
+  all_genomes_dir: "/users/mirimia/mirimia/XPIPE/GENOMES"
+  ge_metadata: "/users/mirimia/fmantica/projects/bilaterian_GE/data/samples_metadata"
+  as_metadata: "/users/mirimia/fmantica/projects/bilaterian_AS/data/samples_metadata"
+  fastq_dir: "/no_backup/mirimia/fmantica/bilaterian_AS_fastq"
+  vast_out: "/users/mirimia/fmantica/projects/bilaterian_AS/data/vast_out"
+  ts_call: "/users/mirimia/fmantica/projects/bilaterian_AS/data/ts_call/bilaterian_conserved"
+  tau_call: "/users/mirimia/fmantica/projects/bilaterian_AS/data/tau_call/bilaterian_conserved"
+  database: "/users/mirimia/fmantica/projects/bilaterian_AS/data/DB"
+  gene_orthologies_dir: "/users/mirimia/fmantica/projects/bilaterian_GE/data/gene_sets/All_version2/STRICT/Bilateria/conserved"
+  GO_transfers: "/users/mirimia/fmantica/projects/bilaterian_GE/data/GO_transfers/All_version2"
+ 
+tools:
+  get_tis_AS: "/users/mirimia/fmantica/projects/bilaterian_AS/src/snakemake/3_TISSUE_SPECIFICITY_CALLS/bin/get_tisAS_v6-Fede.pl"
+  truly_AS: "bin/TrulyAS2.pl"
+  compute_tau_from_PSI: "bin/compute_tau_from_PSI.R"
+  #associate_tissue_ts_exons: "bin/associate_tissue_to_ts_exons.R"
+  #associate_events_to_OG: "bin/associate_events_to_OGs.R"
+  run_gprofiler2: "bin/run_gprofiler2.R"
+  associate_ts_exons_to_extra_info: "bin/associate_ts_exons_to_extra_info.R"
+  define_ts_and_patas_exons: "bin/define_ts_and_patas_exons.R"
+  compute_ranked_PSI_across_tissues: "bin/compute_ranked_PSI_across_tissues.R"
+
+variables:
+  my_version: "All_version2"
+  all_species: ["Hs2", "Mm2", "Bt2", "Mdo", "Gga", "Xtr", "Dre", "Cmi", "Bla", "Sp2", "Dme", "Eba", "Aae", "Bmo", "Tca", "Ame", "Bge", "Cdi", "Sma", "Obi"]
+  all_tissues: ["Neural", "Testis", "Ovary", "Muscle", "Kidney", "Epithelial", "DigestiveTract", "Adipose"]
+  vlow_option_dict: {"noVLOW" : "--noVLOW", "All" : ""}

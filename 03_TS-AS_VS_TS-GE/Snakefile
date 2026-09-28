@@ -1,0 +1,651 @@
+configfile: "config.yaml"
+
+###### paths ###############
+DATA = config["general_paths"]["data"]
+SRC = config["general_paths"]["src"]
+CONDA_ENVS = config["general_paths"]["conda_envs"]
+#ALL_EXTRAEXONS = config["paths"]["all_extraexons_dir"]
+#ALL_REFERENCE_ANNOT = config["paths"]["all_reference_annot_dir"]
+ALL_GTFS_DIR = config["paths"]["all_gtfs_dir"]
+#ALL_GENOMES_DIR = config["paths"]["all_genomes_dir"]
+#GE_METADATA = config["paths"]["ge_metadata"]
+#AS_METADATA = config["paths"]["as_metadata"]
+#VAST_OUT = config["paths"]["vast_out"]
+TS_CALL = config["paths"]["ts_call"]
+DATABASE = config["paths"]["DB"]
+AS_VS_GE_REG_DIR = config["paths"]["AS_vs_GE_reg_dir"]
+GE_TS_GAINS_LOSSES = config["paths"]["GE_ts_gains_losses"]
+GE_TS_CALL = config["paths"]["GE_ts_call"]
+BROCCOLI = config["paths"]["broccoli"]
+GENE_SETS_DIR = config["paths"]["gene_sets_dir"]
+GO_TRANSFERS_DIR = config["paths"]["go_transfers_dir"]
+DOM_DIS_DIR = config["paths"]["dom_dis_dir"]
+REF_PROT_DIR = config["paths"]["ref_prot_dir"]
+BROKEN_CHIMERIC_DIR = config["paths"]["broken_chimeric_dir"]
+VERTEBRATE_INSECT_DIR = config["paths"]["verterbrate_insect_dir"]
+CORRECTED_ENRICHED_GTF_DIR = config["paths"]["corrected_enriched_gtf_dir"]
+CLUE_GO_DIR = config["paths"]["clue_go_dir"]
+
+######## tools ############
+RUN_GPROFILER2 = config["tools"]["run_gprofiler2"]
+
+###### variables ###########
+MY_VERSION = config["variables"]["my_version"]
+ALL_SPECIES = config["variables"]["all_species"]
+ALL_TISSUES = config["variables"]["all_tissues"]
+REG_TYPES = config["variables"]["reg_types"]
+TS_CALL_PARAMS = config["variables"]["ts_call_params"]
+SUFFIX_FILE = config["variables"]["suffix_file"]
+SIMILARITY_MEASURES = config["variables"]["similarity_measures"]
+CATEGORIES = ["reference"] + ["randomization_"+str(element) for element in list(range(1,11))]
+
+### Get the tissues with samples for all species (needed for the randomizations)
+EXCLUDED_TISSUES = {"Cmi": {"Adipose"}, "Bla": {"Kidney", "Adipose"}, "Sp2": {"Adipose"}, "Sma": {"Epithelial", "Adipose"}, "Obi": {"Adipose"},}
+SPECIES_TISSUES_DICT = {species : [tissue for tissue in ALL_TISSUES if tissue not in EXCLUDED_TISSUES.get(species, set())] for species in ALL_SPECIES}
+
+###### targets ##########
+REG_GENES = expand("{path}/{species}/reference/{species}-{reg_type}_regulated_genes.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"])
+RANDOMIZED_REG_GENES = expand("{path}/{species}/randomization_{rand_num}/{species}-{reg_type}_regulated_genes.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS"], rand_num=list(range(81,101)))
+GENE_FEATURES_REG_GENES = expand("{path}/{species}/{category}/{species}-{reg_type}_regulated_genes-gene_length_and_exon_num.tab", path=AS_VS_GE_REG_DIR, reg_type=REG_TYPES, species=ALL_SPECIES, category=CATEGORIES)
+INTERGENIC_REGIONS_REG_GENES = expand("{path}/{species}/{category}/{species}-{reg_type}_regulated_genes-intergenic_distances.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"], category=CATEGORIES)
+INTERGENIC_REGIONS_BACKGROUND = expand("{path}/{species}/{species}-all_genes-intergenic_distances.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES)
+SIM_MEASURES_REG_GENES = expand("{path}/{species}/{category}/{species}-{reg_type}_regulated_genes-average_{similarity_measure}.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"], similarity_measure=SIMILARITY_MEASURES, category=CATEGORIES)
+SIM_MEASURES_BACKGROUND = expand("{path}/{species}/{species}-all_genes-average_{similarity_measure}.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, similarity_measure=SIMILARITY_MEASURES)
+DOMAIN_NUMBER_REG_GENES = expand("{path}/{species}/{category}/{species}-{reg_type}_regulated_genes-total_dom_num.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"], category=CATEGORIES)
+DISORDERED_RATE_REG_GENES = expand("{path}/{species}/{category}/{species}-{reg_type}_regulated_genes-average_dis_rate.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"], category=CATEGORIES)
+GO_DOMAINS_CORRESPONDENCES = DATABASE+"/GO_annot/GO_terms-names-domains_correspondences.tab"
+DOMAIN_NUMBER_BACKGROUND = expand("{path}/{species}/{species}-all_genes-total_dom_num.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES)
+DISORDERED_RATE_BACKGROUND = expand("{path}/{species}/{species}-all_genes-average_dis_rate.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES)
+
+#GENE_FEATURES_REG_GENES = expand("{path}/{species}/{species}-{reg_type}_regulated_genes-gene_length_and_exon_num.tab", path=AS_VS_GE_REG_DIR, reg_type=REG_TYPES, species=ALL_SPECIES)
+#INTERGENIC_REGIONS_REG_GENES = expand("{path}/{species}/{species}-{reg_type}_regulated_genes-intergenic_distances.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"])
+#INTERGENIC_REGIONS_BACKGROUND = expand("{path}/{species}/{species}-all_genes-intergenic_distances.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES)
+#SIM_MEASURES_REG_GENES = expand("{path}/{species}/{species}-{reg_type}_regulated_genes-average_{similarity_measure}.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"], similarity_measure=SIMILARITY_MEASURES)
+#SIM_MEASURES_BACKGROUND = expand("{path}/{species}/{species}-all_genes-average_{similarity_measure}.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, similarity_measure=SIMILARITY_MEASURES)
+#CONSERVATION_PAIRS = DATABASE+"/gene_conservation/corrected_orthogroups-all_gene_pairs.tab"
+#STRATIFIED_GE_AS = expand("{path}/{species}/{species}-AS_GE-stratified_genes_by_{reg_type}.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"])
+#GO_RESULTS = expand("{path}/{species}/GO_enrichmnets/{reg_type}/{species}-{tissue}-{reg_type}-GO_res.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"], tissue=ALL_TISSUES)
+#DOMAIN_NUMBER_REG_GENES = expand("{path}/{species}/{species}-{reg_type}_regulated_genes-total_dom_num.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"])
+#DISORDERED_RATE_REG_GENES = expand("{path}/{species}/{species}-{reg_type}_regulated_genes-average_dis_rate.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"])
+#RANDOMIZED_TS_ENTITIES = expand("{path}/{species}/randomizations/{species}-{reg_type}_regulated_genes-randomization_{randomization_round}.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"], randomization_round = list(range(1,11)))
+#
+#ALL_RANDOMIZATION_RES = expand("{path}/{species}/randomizations/{species}-{reg_type}_regulated_genes-randomization_{randomization_round}-{category}.tab", path=AS_VS_GE_REG_DIR, species=ALL_SPECIES, reg_type=["AS", "GE"], randomization_round = list(range(1,11)), category = ["gene_length_and_exon_num", "intergenic_distances", "average_dom_num", "average_dis_rate", "average_sequence_similarities", "average_expression_similarities"])
+
+
+####### rules ############
+rule all:	
+	input:
+		DOMAIN_NUMBER_BACKGROUND,
+		DISORDERED_RATE_BACKGROUND
+		#REG_GENES,
+		#RANDOMIZED_REG_GENES,
+		#GENE_FEATURES_REG_GENES,
+		#INTERGENIC_REGIONS_REG_GENES,
+		#INTERGENIC_REGIONS_BACKGROUND,
+		#SIM_MEASURES_REG_GENES,
+		#SIM_MEASURES_BACKGROUND,
+		#DOMAIN_NUMBER_REG_GENES,
+		#DISORDERED_RATE_REG_GENES,
+		#GO_DOMAINS_CORRESPONDENCES
+
+		#CONSERVATION_PAIRS,
+		#STRATIFIED_GE_AS,
+		#SIM_MEASURE_BG,
+		#GO_RESULTS,
+		#DISORDERED_RATE,
+		#DATABASE+"/protein_coding_count/all_species-bilaterian_conserved-protein_coding_count.txt",
+		#RANDOMIZED_TS_ENTITIES,
+		#ALL_RANDOMIZATION_RES
+
+##################################################
+####### GET AS AND GE REGULATED GENES ############
+##################################################
+
+#This is a stupid event that has a duplicated gene ID. I am removing it, as it is not among my TS events.
+#I am modifying this rule from how it was run in the thesis so that the new definition of "Associated tissue" is the one taken into account.
+#Also, I am excluding the genes where there are DOWN exons (they are too difficult to interpret)
+#I am also removing the "discarded" exons from the previous definition: they are selected by the get_tis_AS but do not pass the other cutoffs
+rule get_AS_regulated_genes:
+	input:
+		TS_exons = TS_CALL+"/bilaterian_conserved/{species}/"+TS_CALL_PARAMS+"/TS_types/All_AS_types-associated_tissue_dPSI15-spec_pattern_PSI15-tau_0.6.tab", 
+		event_gene_ID = DATABASE+"/event_gene_correspondences/{species}.Event-Gene.IDs.txt" 
+	output:
+		AS_reg_with_event = AS_VS_GE_REG_DIR+"/{species}/reference/{species}-AS_regulated_genes-with_event.tab",
+		AS_reg_without_event = AS_VS_GE_REG_DIR+"/{species}/reference/{species}-AS_regulated_genes.tab"
+	run:
+		import pandas as pd
+
+		### Upload input
+		TS_exons_df = pd.read_table(str(input.TS_exons), sep="\t", header=0, index_col=False)
+		event_geneID_df = pd.read_table(str(input.event_gene_ID), sep="\t", header=0, index_col=False)
+		### Filter only for UP exons (necessary step)
+		filtered_TS_exons_df = TS_exons_df.loc[TS_exons_df["Direction"]=="UP"][["EventID", "Direction", "Associated_Tis", "Exon_type"]].copy()
+		### Remove discarded exons
+		filtered_TS_exons_df = filtered_TS_exons_df.loc[filtered_TS_exons_df["Exon_type"]!="Discarded"]
+		### Expand column with associated tissues
+		filtered_TS_exons_df["Associated_Tis"] = filtered_TS_exons_df["Associated_Tis"].str.split(";")
+		expanded_TS_exons_df = filtered_TS_exons_df.explode("Associated_Tis")
+		### Add geneID
+		event_geneID_dict = pd.Series(event_geneID_df.GeneID.values, index=event_geneID_df.EventID).to_dict()
+		expanded_TS_exons_df["GeneID"] = expanded_TS_exons_df["EventID"].map(event_geneID_dict)
+		### Reorder and save
+		reordered_TS_exons_df = expanded_TS_exons_df[["GeneID", "EventID", "Associated_Tis", "Direction"]]
+		reordered_TS_exons_df.to_csv(str(output.AS_reg_with_event), sep="\t", header=False, index=False, na_rep="NA")
+		# Save output in the same format as TS-GE below
+		filtered_TS_exons_df = reordered_TS_exons_df[["GeneID", "Associated_Tis"]].drop_duplicates()
+		filtered_TS_exons_df.to_csv(str(output.AS_reg_without_event), sep="\t", header=False, index=False, na_rep="NA")
+
+
+### Writing alternative rule that gives exactly the same result but maybe is a bit easier to read
+rule get_GE_regulated_genes:
+	input:
+		"/users/mirimia/fmantica/projects/bilaterian_GE/data/ts_gains_losses/species_QN_5_TPM_v6/All_version2/Bilateria_conserved_orthogroups-All_genes-associated_tissues.tab"
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/reference/{species}-GE_regulated_genes.tab"
+	params:
+		tau_cutoff = 0.75,
+		expr_cutoff = "YES_EXPR" #This corresponds to an expr ≥ 5 TPMs in at least one tissue
+	run:
+		import pandas as pd
+
+		### Upload input
+		bilaterian_conserved_OG_df = pd.read_table(str(input), sep="\t", header=None, index_col=False, names=["OG_ID", "Species", "GeneID", "Tau", "Top_Tis", "Associated_Tis", "Expr_cutoff"])
+		### Select TS genes and reduce df
+		TS_genes_df = bilaterian_conserved_OG_df.loc[(bilaterian_conserved_OG_df["Species"]==str(wildcards.species)) & (bilaterian_conserved_OG_df["Tau"] >= params.tau_cutoff) & (bilaterian_conserved_OG_df["Expr_cutoff"]==params.expr_cutoff) & (bilaterian_conserved_OG_df["Top_Tis"]!="None")].copy()
+		TS_genes_df = TS_genes_df[["GeneID", "Associated_Tis"]]
+		### Explode tissue colum (tissues with double tissue-specificity will be divided)
+		TS_genes_df["Associated_Tis"] = TS_genes_df["Associated_Tis"].str.split(";")
+		expanded_TS_genes_df = TS_genes_df.explode("Associated_Tis")
+		### Save to file
+		expanded_TS_genes_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")
+
+
+############################################################
+######## RANDOMIZE AS AND GE REG GENES #####################
+############################################################
+
+
+rule randomize_TS_exons:
+	input:
+		AS_reg_genes = AS_VS_GE_REG_DIR+"/{species}/reference/{species}-AS_regulated_genes-with_event.tab",
+		coverage_exons = lambda wildcards: expand(TS_CALL+"/bilaterian_conserved/{species}/"+TS_CALL_PARAMS+"/dPSIs_{tissue}.tab", species=wildcards.species, tissue=SPECIES_TISSUES_DICT[wildcards.species]),
+		event_gene_ID = DATABASE+"/event_gene_correspondences/{species}.Event-Gene.IDs.txt"
+	output:
+		AS_reg_with_event = AS_VS_GE_REG_DIR+"/{species}/randomization_{rand_round}/{species}-AS_regulated_genes-with_event.tab",
+		AS_reg_without_event = AS_VS_GE_REG_DIR+"/{species}/randomization_{rand_round}/{species}-AS_regulated_genes.tab"
+	run:
+		import pandas as pd
+		import os
+		import random
+
+		### Set seed for this to be reproducible
+		random.seed(int(wildcards.rand_round))
+
+		### Read inputs
+		reg_genes_df = pd.read_table(str(input.AS_reg_genes), sep="\t", header=None, index_col=False, names=["GeneID", "EventID", "Tissue", "Direction"])
+		event_geneID_df = pd.read_table(str(input.event_gene_ID), sep="\t", header=0, index_col=False)
+
+		### Cycle on the coverage exons. Just get the EventID and add the relative tissue
+		all_tissues_sampled_exons_df = pd.DataFrame()
+		for coverage_exon_file in input.coverage_exons:
+		  tissue = os.path.basename(coverage_exon_file).replace("dPSIs_", "").replace(".tab", "")
+		  number_of_TS_events = (reg_genes_df["Tissue"] == tissue).sum()
+		  coverage_exon_df = pd.read_table(str(coverage_exon_file), sep="\t", header=0, index_col=False)[["EventID"]]
+		  coverage_exon_df["Tissue"] = tissue
+		  ### Get a random number of exons with coverage equal to the real number. Set the random state for reproducibility
+		  sampled_exons_df = coverage_exon_df.sample(n=number_of_TS_events, random_state=int(wildcards.rand_round)).reset_index(drop=True)
+		  ### Join to combined dataframe
+		  all_tissues_sampled_exons_df = pd.concat([all_tissues_sampled_exons_df, sampled_exons_df])
+
+		### Format final dataframes
+		event_geneID_dict = pd.Series(event_geneID_df.GeneID.values, index=event_geneID_df.EventID).to_dict()
+		all_tissues_sampled_exons_df["GeneID"] = all_tissues_sampled_exons_df["EventID"].map(event_geneID_dict)
+		all_tissues_sampled_exons_df["Direction"] = "UP"
+		all_tissues_sampled_exons_df = all_tissues_sampled_exons_df[["GeneID", "EventID", "Tissue", "Direction"]]
+		all_tissues_sampled_genes_df = all_tissues_sampled_exons_df[["GeneID", "Tissue"]].copy().drop_duplicates()
+		### Save to files
+		all_tissues_sampled_exons_df.to_csv(str(output.AS_reg_with_event), sep="\t", header=False, index=False, na_rep="NA")
+		all_tissues_sampled_genes_df.to_csv(str(output.AS_reg_without_event), sep="\t", header=False, index=False, na_rep="NA")
+
+
+rule randomize_TS_genes:
+	input:
+		GE_reg_genes = AS_VS_GE_REG_DIR+"/{species}/reference/{species}-GE_regulated_genes.tab",
+		bilaterian_conserved = "/users/mirimia/fmantica/projects/bilaterian_GE/data/ts_gains_losses/species_QN_5_TPM_v6/All_version2/Bilateria_conserved_orthogroups-All_genes-associated_tissues.tab"
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/randomization_{rand_round}/{species}-GE_regulated_genes.tab"
+	params:
+		expr_cutoff = "YES_EXPR" #This corresponds to an expr ≥ 5 TPMs in at least one tissue	
+	run:
+		import pandas as pd
+		import random
+		import numpy as np
+
+		### Set seed for this to be reproducible
+		random.seed(int(wildcards.rand_round))
+		
+		### Read inputs
+		reg_genes_df = pd.read_table(str(input.GE_reg_genes), sep="\t", header=None, index_col=False, names=["GeneID", "Tissue"])
+		bilaterian_conserved_df = pd.read_table(str(input.bilaterian_conserved), sep="\t", header=None, index_col=False, names=["OG_ID", "Species", "GeneID", "Tau", "Top_Tis", "Associated_Tis", "Expr_cutoff"])
+		bilaterian_conserved_df["Species"] = bilaterian_conserved_df["Species"].replace({"BmA": "Bmo"})
+		### Filter only for genes of the queried species
+		species_conserved_genes_df = bilaterian_conserved_df.loc[(bilaterian_conserved_df["Species"] == wildcards.species) & (bilaterian_conserved_df["Expr_cutoff"]==params.expr_cutoff)].copy()[["GeneID"]] 
+		### Select a random number of TS genes
+		label_counts = reg_genes_df["Tissue"].value_counts()
+		sampled_genes_df = species_conserved_genes_df.sample(n=label_counts.sum(), random_state=int(wildcards.rand_round)).reset_index(drop=True)
+		### Assign labels based on the original counts
+		sampled_genes_df["Tissue"] = np.random.RandomState(int(wildcards.rand_round)).permutation(list(reg_genes_df["Tissue"]))
+		### Save to file
+		sampled_genes_df.to_csv(str(output), sep="\t", index=False, header=False, na_rep="NA")
+
+
+##################################################
+####### GET GENE LENGHT AND EXON NUMBER ##########
+##################################################
+
+#Gene length from the gene entry
+#Exon number by counting the number of exons
+
+#I am considering only the reference isoform, which is by default the longest isoform anyways.
+#Filter for bilaterian conserved genes (this is different from what I was doing in the thesis)
+rule get_gene_lenght_and_exon_num:
+	input:
+		GTF = ALL_GTFS_DIR+"/{species}_annot-B-brochi.gtf",
+		bilaterian_conserved = GENE_SETS_DIR+"/STRICT/Bilateria/conserved/Bilateria_conserved_orthogroups-EXPR_genes.txt"
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{species}-all_genes-gene_length_and_exon_num.tab"
+	run:
+		import pandas as pd
+		import re
+
+		### Read inputs
+		input_gtf = pd.read_table(str(input.GTF), sep="\t", index_col=False, header=None, names=["chr", "source", "feature", "start", "stop", "score", "strand", "frame", "attribute"])
+		orthogroups_df = pd.read_table(str(input.bilaterian_conserved), sep="\t", index_col=False, header=None, names=["OG_ID", "Species", "GeneID"])
+		### Add gene ID
+		my_raw_gene_id = [part for element in list(input_gtf["attribute"]) for part in element.split(";") if "gene_id" in part]
+		input_gtf["GeneID"] = [re.sub(".*[ ]", "", re.sub('"', "", element)) for element in my_raw_gene_id]
+		### Filter gtf only for protein coding genes
+		protein_coding_genes = list(set(list(input_gtf.loc[input_gtf["feature"]=="CDS"]["GeneID"])))
+		input_gtf = input_gtf.loc[input_gtf["GeneID"].isin(protein_coding_genes)]
+		### Initialize final dataframe
+		final_df = pd.DataFrame()
+		### Group by gene ID
+		grouped_gtf = input_gtf.groupby("GeneID")
+		for geneID, group in grouped_gtf:
+		  #gene_length = max(list(group["stop"])) - min(list(group["start"]))
+		  gene_length = group["stop"].max() - group["start"].min()
+		  ### Count how many different exons there are in the reference isoform (the drop.duplicates should be superfluous)
+		  exon_number = group.loc[group["feature"]=="exon",["chr", "feature", "start", "stop"]].drop_duplicates().shape[0]
+		  group_df = pd.DataFrame({"GeneID" : [geneID], "Gene_length" : [gene_length], "Exon_number" : [exon_number]})
+		  ### Join to final dataframe
+		  final_df = pd.concat([final_df, group_df])
+		### Filter for bilaterian conserved only
+		bilaterian_conserved_genes = list(orthogroups_df["GeneID"])
+		final_df = final_df.loc[final_df["GeneID"].isin(bilaterian_conserved_genes)]
+		#Save to output
+		final_df.to_csv(str(output), index=False, header=True, sep="\t", na_rep="NA")
+
+
+rule associate_gene_length_and_exon_num:
+	input:
+		reg_genes = AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes.tab",
+		gene_features = AS_VS_GE_REG_DIR+"/{species}/{species}-all_genes-gene_length_and_exon_num.tab"
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes-gene_length_and_exon_num.tab"
+	run:
+		import pandas as pd
+
+		### Read inputs
+		reg_genes_df = pd.read_table(str(input.reg_genes), sep="\t", header=None, index_col=False, names=["GeneID", "Tissue"])
+		gene_features_df = pd.read_table(str(input.gene_features), sep="\t", index_col=False, header=0) #Header: GeneID, Gene_length, Exon_number
+		### Combine dataframes and save to file
+		final_df = reg_genes_df.merge(gene_features_df, on="GeneID", how="left")
+		final_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")
+
+
+##################################################
+####### INTERGENIC DISTANCES #####################
+##################################################
+
+#### This rule was gentle courtesy of Luisito
+rule compute_all_intergenic_regions_by_species:
+	input:
+		#gtf = ALL_GTFS_DIR+"/{species}_annot-B-brochi.gtf"
+		gtf = "/users/mirimia/fmantica/projects/bilaterian_GE/data/DB/corrected_gtf/All_version2/ref_gene_entries/{species}_annot-B-brochi.gtf"
+	output:
+		upstream = AS_VS_GE_REG_DIR+"/{species}/intergenic_regions_inputs/{species}_upstream_all_genes.txt",
+		downstream =  AS_VS_GE_REG_DIR+"/{species}/intergenic_regions_inputs/{species}_downstream_all_genes.txt",
+		combined = AS_VS_GE_REG_DIR+"/{species}/intergenic_regions_inputs/{species}_whole_intergenic_region.txt"
+	shell:
+		"""
+		grep -P '\tgene\t' {input} | sort | uniq | sort -k1,1 -k4,4n > {wildcards.species}_sorted.gtf; \
+		bedtools closest -id -D "ref" -t first -io -d -a {wildcards.species}_sorted.gtf -k 1 -b {wildcards.species}_sorted.gtf -mdb all | cut -f 1-9,19 > {output.upstream}.tmp; \
+		bedtools closest -iu -D "ref" -t first -io -d -a {wildcards.species}_sorted.gtf -k 1 -b {wildcards.species}_sorted.gtf -mdb all | cut -f 1-9,19 > {output.downstream}.tmp; \
+		cat {output.upstream}.tmp | awk 'BEGIN {{ FS = "\t" }};{{if($7=="+")print $0}}' > {output.upstream}; \
+		cat {output.downstream}.tmp | awk 'BEGIN {{ FS = "\t" }};{{if($7=="-")print $0}}' >> {output.upstream}; \
+		cat {output.downstream}.tmp | awk 'BEGIN {{ FS = "\t" }};{{if($7=="+")print $0}}' > {output.downstream}; \
+		cat {output.upstream}.tmp | awk 'BEGIN {{ FS = "\t" }};{{if($7=="-")print $0}}' >> {output.downstream}; \
+		cat {output.upstream} | awk '{{print $NF"\t"$10}}' | sed 's/"//g; s/;//' | awk '{{print $2"\t"$1}}' \
+		| translate -a <(cat {output.downstream} | awk '{{print $NF"\t"$10}}' | sed 's/"//g; s/;//' | awk '{{print $2"\t"$1}}') 1 \
+		| awk -v OFS="\t" 'function abs(v) {{v += 0; return v < 0 ? -v : v}} {{print $1,$2,$3,abs($2)+abs($3)}}' > {output.combined}
+		rm {wildcards.species}_sorted.gtf {output.upstream}.tmp {output.downstream}.tmp;
+		"""
+
+rule associate_intergenic_regions_reg_genes:
+	input:
+		reg_genes = AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes.tab",
+		intergenic_dist = AS_VS_GE_REG_DIR+"/{species}/intergenic_regions_inputs/{species}_whole_intergenic_region.txt" 
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes-intergenic_distances.tab"
+	run:
+		import pandas as pd
+
+		### Read inputs
+		reg_genes_df = pd.read_table(str(input.reg_genes), sep="\t", header=None, index_col=False, names=["GeneID", "Tissue"])
+		intergenic_dist_df = pd.read_table(str(input.intergenic_dist), sep="\t", index_col=False, header=None, names=["GeneID", "Up_dist", "Down_dist", "Intergenic_dist"])[["GeneID", "Intergenic_dist"]]
+		### Combine dataframes and save to file
+		final_df = reg_genes_df.merge(intergenic_dist_df, on="GeneID", how="left")
+		final_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")
+
+
+### Get intergenic distances for the same genes for which I got gene length and exon number
+rule associate_intergenic_regions_background:
+	input:
+		background = AS_VS_GE_REG_DIR+"/{species}/{species}-all_genes-gene_length_and_exon_num.tab",
+		intergenic_dist = AS_VS_GE_REG_DIR+"/{species}/intergenic_regions_inputs/{species}_whole_intergenic_region.txt" 
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{species}-all_genes-intergenic_distances.tab"
+	run:
+		import pandas as pd
+
+		### Read inputs
+		background_df = pd.read_table(str(input.background), sep="\t", header=0, index_col=False)[["GeneID"]]
+		intergenic_dist_df = pd.read_table(str(input.intergenic_dist), sep="\t", index_col=False, header=None, names=["GeneID", "Up_dist", "Down_dist", "Intergenic_dist"])[["GeneID", "Intergenic_dist"]]
+		### Combine dataframes and save to file
+		final_df = background_df.merge(intergenic_dist_df, on="GeneID", how="left")
+		final_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")
+
+
+##################################################
+######## SEQUENCE AND EXPRESSION SIMILARITIES ####
+##################################################
+
+#### I think here I meant that the outgroup species are automatically excluded
+### These rules compute both the average sequence similarity and the average expression similarity
+rule compute_average_similarity_measure:
+	input:
+		reg_genes = AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes.tab",
+		pairwise_seq_sim = VERTEBRATE_INSECT_DIR+"/pairwise_{similarity_measure}/all_pairwise_{similarity_measure}.txt"
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes-average_{similarity_measure}.tab"
+	run:
+
+		import pandas as pd
+		import numpy as np
+		
+		### Read input files
+		regulated_df = pd.read_table(str(input.reg_genes), sep="\t", index_col=False, header=None, names=["GeneID", "Tissue"])
+		pairwise_seq_sim_df = pd.read_table(str(input.pairwise_seq_sim), sep="\t", index_col=False, header=None, names=["OG_ID", "Species1", "Species2", "GeneID1", "GeneID2", "Sim_mes"])
+		### Get list of regulated genes
+		reg_genes_list = list(set(list(regulated_df["GeneID"])))
+		### Filter for regulated genes in GeneID1 (i.e., these genes are the query)
+		filtered_pairwise_seq_sim_df = pairwise_seq_sim_df.loc[pairwise_seq_sim_df["GeneID1"].isin(reg_genes_list)]
+		### Compute average by GeneID1 group
+		average_sim_df = pd.DataFrame()
+		grouped_seq_sim_df = filtered_pairwise_seq_sim_df.groupby("GeneID1")
+		for GeneID, group in grouped_seq_sim_df:
+		  GeneID_average_sim = np.nanmean(list(group["Sim_mes"]))
+		  average_sim_df = pd.concat([average_sim_df, pd.DataFrame({"GeneID" : [GeneID], "Average_sim" : [GeneID_average_sim]})])
+		if wildcards.species in ["Bla", "Sp2", "Sma", "Obi"]:
+		  regulated_df["Average_sim"] = "NA"
+		else:		
+		  ### Get a dictionary in order to add the average seq sim value to the original dataframe
+		  geneID_seq_sim_dict = pd.Series(average_sim_df.Average_sim.values, index=average_sim_df.GeneID).to_dict()
+		  ### Add to original df
+		  regulated_df["Average_sim"] = regulated_df["GeneID"].map(geneID_seq_sim_dict)
+		### Save to file
+		regulated_df.to_csv(str(output), sep="\t", index=False, header=False, na_rep="NA")
+
+
+rule compute_average_similarity_measure_background:
+	input:
+		bilaterian_conserved = GENE_SETS_DIR+"/STRICT/Bilateria/conserved/Bilateria_conserved_orthogroups-EXPR_genes.txt",
+		pairwise_seq_sim = VERTEBRATE_INSECT_DIR+"/pairwise_{similarity_measure}/all_pairwise_{similarity_measure}.txt"
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{species}-all_genes-average_{similarity_measure}.tab"
+	run:
+
+		import pandas as pd
+		import numpy as np
+		
+		### Read inputs
+		orthogroups_df = pd.read_table(str(input.bilaterian_conserved), sep="\t", index_col=False, header=None, names=["OG_ID", "Species", "GeneID"])
+		orthogroups_df["Species"] = [species if species != "BmA" else "Bmo" for species in list(orthogroups_df["Species"])]
+		pairwise_seq_sim_df = pd.read_table(str(input.pairwise_seq_sim), sep="\t", index_col=False, header=None, names=["OG_ID", "Species1", "Species2", "GeneID1", "GeneID2", "Sim_mes"])
+		### Filter for genes of interest in GeneID1
+		species_genes_list = list(orthogroups_df.loc[orthogroups_df["Species"]==str(wildcards.species)]["GeneID"])
+		filtered_pairwise_seq_sim_df = pairwise_seq_sim_df.loc[pairwise_seq_sim_df["GeneID1"].isin(species_genes_list)]
+		### Compute average by GeneID1 group
+		average_sim_df = pd.DataFrame()
+		grouped_seq_sim_df = filtered_pairwise_seq_sim_df.groupby("GeneID1")
+		for GeneID, group in grouped_seq_sim_df:
+		  GeneID_average_sim = np.nanmean(list(group["Sim_mes"]))
+		  average_sim_df = pd.concat([average_sim_df, pd.DataFrame({"GeneID" : [GeneID], "Average_sim" : [GeneID_average_sim]})])
+		### Get a dictionary in order to add the average seq sim value to the original dataframe
+		if wildcards.species in ["Bla", "Sp2", "Sma", "Obi"]:
+		  all_geneIDs = list(orthogroups_df.loc[orthogroups_df["Species"]==wildcards.species]["GeneID"])
+		  geneID_seq_sim_df = pd.DataFrame({"GeneID" : all_geneIDs, "Average_sim" : ["NA" for element in all_geneIDs]})
+		else:
+		  geneID_seq_sim_dict = pd.Series(average_sim_df.Average_sim.values, index=average_sim_df.GeneID).to_dict()
+		  ### Transform to dataframe and save to output
+		  geneID_seq_sim_df = pd.DataFrame(list(geneID_seq_sim_dict.items()), columns=["GeneID", "Average_sim"])
+		### Save to file
+		geneID_seq_sim_df.to_csv(str(output), sep="\t", index=False, header=False, na_rep="NA")
+
+
+##################################################
+############ DOMAINS AND DISORDERED ##############
+##################################################
+
+### Compute the average disordered rate and the number of domains per gene
+### Consider all protein isoforms
+### I think I should normalize the number of domains in some way, as by default longer genes would tend to have more.
+### In reality, I hope to see the opposite effect
+
+#I am already filtering for bilaterian conserved genes
+#Header: GENE, PROTEIN, START, STOP, ID, NAME, CLAN
+#I will count the number of domains annotated in the reference protein, because I am not sure how to collapse the info across different isoforms
+#IMPORTANT: this rule only works if the GeneIDs are unique between species (i.e., there are not more than 1 species with IDs from STRINGTIE or similar)
+
+rule compute_domain_number:
+	input:
+		domain_file = DOM_DIS_DIR+"/{species}/{species}_prot_annot-pfam-parsed-sorted.tab.gz",
+		reference_proteins = REF_PROT_DIR+"/{species}_gene_ref_prot_dict",
+		broken_chimeric_file = BROKEN_CHIMERIC_DIR+"/{species}_new_geneIDs.txt",
+		reg_file = AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes.tab"
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes-total_dom_num.tab"
+	run:
+		import pandas as pd
+
+		### Upload inputs
+		domain_df = pd.read_table(str(input.domain_file), sep="\t", index_col=False, header=0, names=["Original_GeneID", "ProteinID", "Start", "Stop", "ID", "Name", "Clan"]) #Header present
+		reference_protein_df = pd.read_table(str(input.reference_proteins), sep="\t", index_col=False, header=None, names=["Original_GeneID", "ProteinID"])
+		brochi_ids_df = pd.read_table(str(input.broken_chimeric_file), sep="\t", index_col=False, header=0, names=["Original_GeneID", "GeneID", "Category"])
+		reg_df = pd.read_table(str(input.reg_file), sep="\t", index_col=False, header=None, names=["GeneID", "Tissue"])	
+		### Filter for reference protein
+		reference_protein_domain_df = domain_df.loc[domain_df["ProteinID"].isin(list(reference_protein_df["ProteinID"]))]
+		### For broken and chimeric genes, replace original with new IDs
+		### Small drawback for chimeric genes: the whole original gene will be considered (there is no straightforward way of separating them at this point)
+		brochi_ids_df = brochi_ids_df[["Original_GeneID", "GeneID"]]
+		brochi_ids_df["Original_GeneID"] = brochi_ids_df["Original_GeneID"].str.split(";")
+		brochi_ids_df = brochi_ids_df.explode("Original_GeneID")
+		brochi_ids_df["GeneID"] = brochi_ids_df["GeneID"].str.split(";")
+		brochi_ids_df = brochi_ids_df.explode("GeneID")
+		reference_protein_domain_df = reference_protein_domain_df.merge(brochi_ids_df, on="Original_GeneID", how="left")
+		reference_protein_domain_df["GeneID"] = (reference_protein_domain_df["GeneID"].fillna(reference_protein_domain_df["Original_GeneID"])) 	
+		### Compute total number of domains
+		domain_counts_df = reference_protein_domain_df.groupby("GeneID").size().reset_index(name="Domain_num")
+		### Add domain number info to regulated genes
+		final_reg_df = reg_df.merge(domain_counts_df, on="GeneID", how="left")
+		#final_reg_df["Domain_num"] = final_reg_df["Domain_num"].fillna(0).astype(int)
+		### Save to output file
+		final_reg_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")
+
+
+#No header in the disorder file: ENSP00000000233 1 M 0 0.0287
+#Also, it has the protein ID only (no gene ID)
+#Header of the suffix file: species geneID_prefix geneID_length transcript_suffix protein_suffix transcript_prefix protein_prefix
+rule compute_average_disordered_rate:
+	input:
+		disorder_file = DOM_DIS_DIR+"/{species}/{species}-iupred_result.txt.gz",
+		reference_proteins = REF_PROT_DIR+"/{species}_gene_ref_prot_dict",
+		broken_chimeric_file = BROKEN_CHIMERIC_DIR+"/{species}_new_geneIDs.txt",
+		reg_file = AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes.tab"
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{category}/{species}-{reg_type}_regulated_genes-average_dis_rate.tab"
+	run:
+		import pandas as pd
+
+		### Upload inputs
+		disordered_df = pd.read_table(str(input.disorder_file), sep="\t", index_col=False, header=None, names=["ProteinID", "AA_pos", "AA", "Dis_rate_bin", "Dis_rate_raw"])
+		reference_protein_df = pd.read_table(str(input.reference_proteins), sep="\t", index_col=False, header=None, names=["Original_GeneID", "ProteinID"])
+		brochi_ids_df = pd.read_table(str(input.broken_chimeric_file), sep="\t", index_col=False, header=0, names=["Original_GeneID", "GeneID", "Category"])
+		reg_df = pd.read_table(str(input.reg_file), sep="\t", index_col=False, header=None, names=["GeneID", "Tissue"])
+		### Filter for reference protein and add geneID
+		reference_protein_disordered_df = disordered_df.loc[disordered_df["ProteinID"].isin(list(reference_protein_df["ProteinID"]))].copy()
+		### Add geneID 
+		reference_prot_geneID_dict = pd.Series(reference_protein_df.Original_GeneID.values, index=reference_protein_df.ProteinID)
+		reference_protein_disordered_df["Original_GeneID"] = reference_protein_disordered_df["ProteinID"].map(reference_prot_geneID_dict)
+		### For broken and chimeric genes replace the original with new IDs
+		### Small drawback for chimeric genes: the whole original gene will be considered (there is no straightforward way of separating them at this point)
+		brochi_ids_df = brochi_ids_df[["Original_GeneID", "GeneID"]]
+		brochi_ids_df["Original_GeneID"] = brochi_ids_df["Original_GeneID"].str.split(";")
+		brochi_ids_df = brochi_ids_df.explode("Original_GeneID")
+		brochi_ids_df["GeneID"] = brochi_ids_df["GeneID"].str.split(";")
+		brochi_ids_df = brochi_ids_df.explode("GeneID")
+		reference_protein_disordered_df = reference_protein_disordered_df.merge(brochi_ids_df, on="Original_GeneID", how="left")
+		reference_protein_disordered_df["GeneID"] = (reference_protein_disordered_df["GeneID"].fillna(reference_protein_disordered_df["Original_GeneID"])) 	
+		### Compute average disorder by gene
+		average_disordered_df = reference_protein_disordered_df.groupby("GeneID")["Dis_rate_raw"].mean().reset_index(name="Average_dis_rate")
+		### Add average disordered info to regulated genes
+		final_reg_df = reg_df.merge(average_disordered_df, on="GeneID", how="left")
+		final_reg_df["Average_dis_rate"] = final_reg_df["Average_dis_rate"]
+		### Save to output file
+		final_reg_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")
+
+
+
+##################################################
+
+##################################################
+##### DOMAINS AND DISORDERED BACKGROUNS ##########
+##################################################
+
+rule compute_domain_number_background:
+	input:
+		domain_file = DOM_DIS_DIR+"/{species}/{species}_prot_annot-pfam-parsed-sorted.tab.gz",
+		reference_proteins = REF_PROT_DIR+"/{species}_gene_ref_prot_dict",
+		broken_chimeric_file = BROKEN_CHIMERIC_DIR+"/{species}_new_geneIDs.txt",
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{species}-all_genes-total_dom_num.tab"
+	run:
+		import pandas as pd
+
+		### Upload inputs
+		domain_df = pd.read_table(str(input.domain_file), sep="\t", index_col=False, header=0, names=["Original_GeneID", "ProteinID", "Start", "Stop", "ID", "Name", "Clan"]) #Header present
+		reference_protein_df = pd.read_table(str(input.reference_proteins), sep="\t", index_col=False, header=None, names=["Original_GeneID", "ProteinID"])
+		brochi_ids_df = pd.read_table(str(input.broken_chimeric_file), sep="\t", index_col=False, header=0, names=["Original_GeneID", "GeneID", "Category"])
+		### Filter for reference protein
+		reference_protein_domain_df = domain_df.loc[domain_df["ProteinID"].isin(list(reference_protein_df["ProteinID"]))]
+		### For broken and chimeric genes, replace original with new IDs
+		### Small drawback for chimeric genes: the whole original gene will be considered (there is no straightforward way of separating them at this point)
+		brochi_ids_df = brochi_ids_df[["Original_GeneID", "GeneID"]]
+		brochi_ids_df["Original_GeneID"] = brochi_ids_df["Original_GeneID"].str.split(";")
+		brochi_ids_df = brochi_ids_df.explode("Original_GeneID")
+		brochi_ids_df["GeneID"] = brochi_ids_df["GeneID"].str.split(";")
+		brochi_ids_df = brochi_ids_df.explode("GeneID")
+		reference_protein_domain_df = reference_protein_domain_df.merge(brochi_ids_df, on="Original_GeneID", how="left")
+		reference_protein_domain_df["GeneID"] = (reference_protein_domain_df["GeneID"].fillna(reference_protein_domain_df["Original_GeneID"])) 	
+		### Compute total number of domains
+		domain_counts_df = reference_protein_domain_df.groupby("GeneID").size().reset_index(name="Domain_num")
+		### Save to output file
+		domain_counts_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")
+
+
+#No header in the disorder file: ENSP00000000233 1 M 0 0.0287
+#Also, it has the protein ID only (no gene ID)
+#Header of the suffix file: species geneID_prefix geneID_length transcript_suffix protein_suffix transcript_prefix protein_prefix
+rule compute_average_disordered_rate_background:
+	input:
+		disorder_file = DOM_DIS_DIR+"/{species}/{species}-iupred_result.txt.gz",
+		reference_proteins = REF_PROT_DIR+"/{species}_gene_ref_prot_dict",
+		broken_chimeric_file = BROKEN_CHIMERIC_DIR+"/{species}_new_geneIDs.txt",
+	output:
+		AS_VS_GE_REG_DIR+"/{species}/{species}-all_genes-average_dis_rate.tab"
+	run:
+		import pandas as pd
+
+		### Upload inputs
+		disordered_df = pd.read_table(str(input.disorder_file), sep="\t", index_col=False, header=None, names=["ProteinID", "AA_pos", "AA", "Dis_rate_bin", "Dis_rate_raw"])
+		reference_protein_df = pd.read_table(str(input.reference_proteins), sep="\t", index_col=False, header=None, names=["Original_GeneID", "ProteinID"])
+		brochi_ids_df = pd.read_table(str(input.broken_chimeric_file), sep="\t", index_col=False, header=0, names=["Original_GeneID", "GeneID", "Category"])
+		### Filter for reference protein and add geneID
+		reference_protein_disordered_df = disordered_df.loc[disordered_df["ProteinID"].isin(list(reference_protein_df["ProteinID"]))].copy()
+		### Add geneID 
+		reference_prot_geneID_dict = pd.Series(reference_protein_df.Original_GeneID.values, index=reference_protein_df.ProteinID)
+		reference_protein_disordered_df["Original_GeneID"] = reference_protein_disordered_df["ProteinID"].map(reference_prot_geneID_dict)
+		### For broken and chimeric genes replace the original with new IDs
+		### Small drawback for chimeric genes: the whole original gene will be considered (there is no straightforward way of separating them at this point)
+		brochi_ids_df = brochi_ids_df[["Original_GeneID", "GeneID"]]
+		brochi_ids_df["Original_GeneID"] = brochi_ids_df["Original_GeneID"].str.split(";")
+		brochi_ids_df = brochi_ids_df.explode("Original_GeneID")
+		brochi_ids_df["GeneID"] = brochi_ids_df["GeneID"].str.split(";")
+		brochi_ids_df = brochi_ids_df.explode("GeneID")
+		reference_protein_disordered_df = reference_protein_disordered_df.merge(brochi_ids_df, on="Original_GeneID", how="left")
+		reference_protein_disordered_df["GeneID"] = (reference_protein_disordered_df["GeneID"].fillna(reference_protein_disordered_df["Original_GeneID"])) 	
+		### Compute average disorder by gene
+		average_disordered_df = reference_protein_disordered_df.groupby("GeneID")["Dis_rate_raw"].mean().reset_index(name="Average_dis_rate")
+		### Save to output file
+		average_disordered_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")
+
+
+##################################################
+########## GO DOMAIN ANNOTATIONS #################
+##################################################
+
+
+### I am going back to the original annotations used in the NatEcoEvo paper (Ensembl v106 and ClueGO) to derive the domain annotation (CC, BP, MF)
+### Careful if changing the input names in this rule (direct reference in the body)
+rule derive_domain_annotations:
+	input:
+		ensembl_annot = "/users/mirimia/fmantica/projects/vertebrate_insect_GE/data/GO_annotations/full_annot/Hs2-GO_annot-Ensembl_v106.txt",
+		ClueGO_annot = expand(CLUE_GO_DIR+"/hg38_{domain_type}_out-leveled.tab", domain_type = ["BiologicalProcess", "CellularComponent", "MolecularFunction"])
+	output:
+		DATABASE+"/GO_annot/GO_terms-names-domains_correspondences.tab"
+	params:
+		domain_types_dict = {"BiologicalProcess" : "biological_process", "CellularComponent" : "cellular_component", "MolecularFunction" : "molecular_function"}
+	run:
+		import pandas as pd
+		import os
+
+		### Read in Ensembl inputs
+		ensembl_annot_df = pd.read_table(input.ensembl_annot, sep="\t", header=0, index_col=False, names=["GeneID", "GO_domain", "GO_term", "GO_Name", "GO_evidence"])
+		ensembl_annot_df = ensembl_annot_df[["GO_term", "GO_Name", "GO_domain"]].drop_duplicates()
+		### Initialize final_df
+		final_df = pd.DataFrame()
+		### Read in ClueGO inputs
+		for cluego_file in input.ClueGO_annot:
+		  basename = os.path.basename(cluego_file)
+		  domain_type = basename.split("_")[1] 
+		  cluego_df = pd.read_table(cluego_file, sep="\t", index_col=False, header=None, names=["GeneID", "GO_term", "GO_Name", "Level"])
+		  cluego_df["GO_domain"] = params.domain_types_dict[domain_type]
+		  cluego_df = cluego_df[["GO_term", "GO_Name", "GO_domain"]].drop_duplicates() 
+		  final_df = pd.concat([final_df, cluego_df])
+		### Only consider GO terms that are not alread in the Ensembl annotation
+		final_df = final_df.loc[~final_df["GO_term"].isin(ensembl_annot_df["GO_term"])].copy()
+		### Add Ensembl annotation and modofy GO_Name
+		final_df = pd.concat([final_df, ensembl_annot_df])
+		final_df["GO_Name"] = final_df["GO_Name"].str.replace(";", "_", regex=False).str.replace(" ", "_", regex=False)
+		### Save to file
+		final_df.to_csv(str(output), sep="\t", header=False, index=False, na_rep="NA")

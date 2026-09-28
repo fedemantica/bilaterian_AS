@@ -1,0 +1,17 @@
+general_paths:
+  conda_envs: "/users/mirimia/fmantica/projects/bilaterian_GE/src/conda_envs"
+
+paths:
+  ge_metadata: "/users/mirimia/fmantica/projects/bilaterian_GE/data/samples_metadata"
+  as_metadata: "/users/mirimia/fmantica/projects/bilaterian_AS/data/samples_metadata"
+  fastq_dir: "/no_backup/mirimia/fmantica/bilaterian_AS_fastq"
+  vast_out: "/users/mirimia/fmantica/projects/bilaterian_AS/data/vast_out"
+ 
+tools:
+
+variables:
+  my_version: "All_version2"
+  all_species: ["Hs2", "Mm2", "Bt2", "Mdo", "Gga", "Xtr", "Dre", "Cmi", "Bla", "Sp2", "Dme", "Eba", "Aae", "Bmo", "Tca", "Ame", "Bge", "Cdi", "Sma", "Obi"]
+  mixed_species: ["Hs2", "Mm2", "Bt2", "Mdo", "Gga", "Xtr", "Dre", "Cmi", "Sp2", "Dme", "Aae", "Bmo", "Tca", "Ame", "Sma", "Obi"]
+  single_species: ["Bla", "Eba", "Bge", "Cdi"]
+  min_read_len: 49

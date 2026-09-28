@@ -1,0 +1,31 @@
+# Generic options
+wf: "main"
+# Schema validation default options
+validate_params: true
+# Notification options
+hook_url: null
+email: "federica.mantica@crg.eu"
+# Main pipeline options
+cluster: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/all_species_inputs/all_species_orthgroups.tab.gz"
+genomes: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/all_species_inputs/GENOMES/*_gDNA.fasta"
+annotations: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/all_species_inputs/CORRECTED_GTF/*_annot.gtf"
+alignmentnum: 1000
+orthogroupnum: 150
+evodists: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/all_species_inputs/evodists_all_species.txt"
+long_dist: "2,0.10,0.50,0.15"
+medium_dist: "2,0.30,0.60,0.20"
+short_dist: "2,0.50,0.70,0.25"
+# Additional data
+extraexons: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/all_species_inputs/CORRECTED_EXTRAEXONS/*_extraexons_corrected.tab"
+bonafide_pairs: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/ALL_LIFTOVERS/all_species-output_enriched_gtf-liftovered.tab"
+orthopairs: null
+prevaln: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/all_species_pairwise_intermediate"
+# Output folder
+output: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/all_species_output-version1"
+# Plot pipeline specific options
+geneID: "ENSG00000095637"
+output_plot: "./output_plot"
+relevant_exs: ""
+ordered_species: null
+isoformID: null
+sub_orthologs: null

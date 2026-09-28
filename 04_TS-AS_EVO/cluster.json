@@ -1,0 +1,18 @@
+{
+  "__default__" :
+  {
+    "qsub" : "qsub -cwd -o \"logs/'{rule}.{wildcards}.$$.out'\" -e \"logs/'{rule}.{wildcards}.$$.out'\"",
+    "ram" : "3G",
+    "time" : "00:05:00",
+    "disk" : "1G",
+    "queue" : "short-centos79"
+  },
+  "get_formatted_exon_orthologies":
+  {
+    "qsub" : "qsub -cwd -o \"logs/'{rule}.{wildcards}.$$.out'\" -e \"logs/'{rule}.{wildcards}.$$.out'\"",
+    "ram" : "8G",
+    "time" : "03:00:00",
+    "disk" : "1G",
+    "queue" : "short-centos79"
+  }
+}

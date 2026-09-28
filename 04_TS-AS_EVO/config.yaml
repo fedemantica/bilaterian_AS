@@ -1,0 +1,49 @@
+general_paths:
+  #data: "/users/mirimia/fmantica/projects/bilaterian_AS/data"
+  data: "/no_backup/mirimia/fmantica/bilaterian_AS"
+  src: "/users/mirimia/fmantica/projects/bilaterian_AS/src"
+  conda_envs: "/users/mirimia/fmantica/projects/bilaterian_GE/src/conda_envs"
+
+paths:
+  all_extraexons_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/ALL_EXTRAEXONS"
+  all_reference_annot_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/ALL_REFERENCE_ANNOT"
+  all_gtfs_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow/ALL_GTFS"
+  all_genomes_dir: "/users/mirimia/mirimia/XPIPE/GENOMES"
+  ge_metadata: "/users/mirimia/fmantica/projects/bilaterian_GE/data/samples_metadata"
+  as_metadata: "/users/mirimia/fmantica/projects/bilaterian_AS/data/samples_metadata"
+  fastq_dir: "/no_backup/mirimia/fmantica/bilaterian_AS_fastq"
+  vast_out: "/users/mirimia/fmantica/projects/bilaterian_AS/data/vast_out"
+  ts_call_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/data/ts_call"
+  DB: "/users/mirimia/fmantica/projects/bilaterian_AS/data/DB"
+  AS_vs_GE_reg_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/data/AS_vs_GE_regulated"
+  GE_ts_gains_losses: "/users/mirimia/fmantica/projects/bilaterian_GE/data/ts_gains_losses/species_QN_5_TPM_v6/All_version2"
+  GE_ts_call: "/users/mirimia/fmantica/projects/bilaterian_GE/data/ts_call/species_QN_5_TPM_taus/All_version2"
+  broccoli: "/users/mirimia/fmantica/projects/bilaterian_GE/data/broccoli/All_version2"
+  gene_sets_dir: "/users/mirimia/fmantica/projects/bilaterian_GE/data/gene_sets/All_version2"
+  exorthist_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/all_species_output-version1"
+  all_reference_annot_dir: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow/ALL_REFERENCE_ANNOT"
+  #exorthist_dir: "/users/mirimia/fmantica/projects/mixed_files/test_exorthist_new_D2"
+  dis_dom_dir: "/users/mirimia/izapata/projects/DisorderRegions/data/Obtain_DisDom"
+ 
+tools:
+  #run_compare_exons: "/users/mirimia/fmantica/projects/regulatory_ancenstry/src/nextflow/EXORTHIST/ExOrthist/bin/compare_exon_sets.pl"
+  run_compare_exons: "/users/mirimia/fmantica/projects/bilaterian_AS/src/nextflow_v1/bin/compare_exon_sets.pl"
+  #add_info_to_exon_orthogroups: "/users/mirimia/fmantica/projects/bilaterian_AS/src/snakemake/6_PROCESS_EXON_ORTHOLOGIES_OUTPUT/bin/add_info_to_exon_orthogroups.py"
+  add_info_to_exon_orthogroups: "/users/mirimia/fmantica/projects/bilaterian_AS/src/snakemake/6_PROCESS_EXON_ORTHOLOGIES_OUTPUT/bin/add_info_to_exon_orthogroups-all_overlaps.py"
+  generate_extree_input: "/users/mirimia/fmantica/projects/bilaterian_AS/src/snakemake/6_PROCESS_EXON_ORTHOLOGIES_OUTPUT/bin/generate_extree_input-v1.R"
+  #generate_extree_input: "/users/mirimia/fmantica/projects/bilaterian_AS/src/snakemake/6_PROCESS_EXON_ORTHOLOGIES_OUTPUT/bin/generate_extree_input.R"
+  rscript: "/users/mirimia/fmantica/software/anaconda3/envs/Rstudio_env/bin/Rscript"
+  #rscript: "/software/as/el7.2/EasyBuild/CRG/software/R/3.6.0-foss-2019a/bin/Rscript"
+
+variables:
+  my_version: "All_version2"
+  all_species: ["Hs2", "Mm2", "Bt2", "Mdo", "Gga", "Xtr", "Dre", "Cmi", "Bla", "Sp2", "Dme", "Eba", "Aae", "Bmo", "Tca", "Ame", "Bge", "Cdi", "Sma", "Obi"]
+  vertebrata: ["Hs2", "Mm2", "Bt2", "Mdo", "Gga", "Xtr", "Dre", "Cmi"]
+  insecta: ["Dme", "Eba", "Aae", "Bmo", "Tca", "Ame", "Bge", "Cdi"]
+  deuterostoma: ["Hs2", "Mm2", "Bt2", "Mdo", "Gga", "Xtr", "Dre", "Cmi", "Bla", "Sp2"]
+  protostoma: ["Dme", "Eba", "Aae", "Bmo", "Tca", "Ame", "Bge", "Cdi", "Sma", "Obi"]
+  all_tissues: ["Neural", "Testis", "Ovary", "Muscle", "Kidney", "Epithelial", "DigestiveTract", "Adipose"]
+  reg_types: ["GE", "AS"]
+  ts_call_params: "All_dPSI10-dPSI_glob25-N4-Rep1-EX"
+  processed_orthologies_dir: "process_exon_orthologies_output-all_vastIDs"
+  #processed_orthologies_dir: "process_exon_orthologies_output"

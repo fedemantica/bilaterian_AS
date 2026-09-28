@@ -1,0 +1,50 @@
+{
+  "__default__" :
+  {
+    "qsub" : "qsub -cwd -o \"logs/'{rule}.{wildcards}.$$.out'\" -e \"logs/'{rule}.{wildcards}.$$.out'\"",
+    "ram" : "3G",
+    "time" : "00:30:00",
+    "disk" : "1G",
+    "queue" : "short-sl7"
+  },
+  "prefetch_fastq" :
+  {
+    "qsub" : "qsub -cwd -o \"logs/'{rule}.{wildcards}.$$.out'\" -e \"logs/'{rule}.{wildcards}.$$.out'\"",
+    "ram" : "15G",
+    "time" : "09:00:00",
+    "disk" : "2G",
+    "queue" : "long-sl7"
+  },
+  "download_SE_fastq" :
+  {
+    "qsub" : "qsub -cwd -o \"logs/'{rule}.{wildcards}.$$.out'\" -e \"logs/'{rule}.{wildcards}.$$.out'\"",
+    "ram" : "10G",
+    "time" : "05:00:00",
+    "disk" : "2G",
+    "queue" : "long-sl7"
+  }, 
+  "download_PE_fastq" :
+  {
+    "qsub" : "qsub -cwd -o \"logs/'{rule}.{wildcards}.$$.out'\" -e \"logs/'{rule}.{wildcards}.$$.out'\"",
+    "ram" : "15G",
+    "time" : "08:00:00",
+    "disk" : "4G",
+    "queue" : "long-sl7"
+  },
+  "run_VTS_align_PE" :
+  {
+    "qsub" : "qsub -cwd -o \"logs/'{rule}.{wildcards}.$$.out'\" -e \"logs/'{rule}.{wildcards}.$$.out'\"",
+    "ram" : "6G",
+    "time" : "50:00:00",
+    "disk" : "2G",
+    "queue" : "long-sl7"
+  },
+  "run_VTS_align_SE" :
+  {
+    "qsub" : "qsub -cwd -o \"logs/'{rule}.{wildcards}.$$.out'\" -e \"logs/'{rule}.{wildcards}.$$.out'\"",
+    "ram" : "6G",
+    "time" : "50:00:00",
+    "disk" : "4G",
+    "queue" : "long-sl7"
+  }
+}
