@@ -1,11 +1,11 @@
-# bilaterian_AS
+# # Code for Mantica et al. (2026)
 
 Code associated with the manuscript:
 
 **Alternative splicing and gene expression repurpose ancestral genes through distinct evolutionary routes**  
 Mantica et al. (2026)
 
-This repository contains the code used to investigate the evolution of tissue-specific alternative splicing (TS-AS) and tissue-specific gene expression (TS-GE) across 20 bilaterian species and eight homologous tissues.
+This repository contains the code used to investigate the evolution of tissue-specific alternative splicing (TS-AS) and tissue-specific gene expression (TS-GE) across 20 bilaterian species and eight homologous tissues (currently available on BioRxiv at https://doi.org/10.64898/2026.09.05.749416).
 
 ## Repository structure
 
