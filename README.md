@@ -1,4 +1,4 @@
-# # Code for Mantica et al. (2026)
+# Code for Mantica et al. (2026)
 
 Code associated with the manuscript:
 
