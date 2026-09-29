@@ -1,0 +1,29 @@
+paths:
+  data: "/no_backup/mirimia/izapata/DISDOM"
+  #data: "/users/mirimia/izapata/projects/DisorderRegions/data/Obtain_DisDom"
+  pfamlib: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/pfam_scan/pfam_dir"
+  bin : "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin"
+
+tools:
+  GetCDS_annot_from_GTF: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/1-GetCDS_annot_from_GTF.pl"
+  ExOrthist_A1: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/A1_generate_annotations_copy.pl"
+
+  translate: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/translate.pl"
+  
+  Parse_CDS_UTR: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/2-Parse_CDS_UTR.pl"
+  Parse_CDSprot_annot: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/35-Parse_CDS_prot_annot.pl"
+
+  StructureData: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/StructureDataInput_Dis.pl"
+  Pfam_Scan: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/pfam_scan/pfam_scan.py"
+  Parse_parsed_pfamout: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/3-Parse_parsed_pfamout_copy.pl"
+  Iupred2a: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/iupred2a/iupred2a.py"
+  Parse_Iupred_Batch: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/Parse_IUPRED2_rec_NoCutOff.pl"
+  DisXexon_VastDB: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/6-CalculateAndPutDis_C1AC2-v2_IZB.pl"
+  DomXexon_VastDB: "/users/mirimia/izapata/projects/DisorderRegions/src/snakemake/GetCDS_ProtSeq_DisDom/bin/7-PutDomAndEv_C1AC2-v2_IZB.pl" 
+
+variables:
+  specie: ["Loc"]
+  #specie: ["Cel", "Dr2", "Nve", "Ptr"]
+  #  specie: ["Ath", "Rno", "Gg4", "Gg3", "Bta", "Mmu", "Hsa"] # "Mml" ["Hs2", "Mm2", "Bt2", "Mdo", "Gga", "Xtr", "Dre", "Cmi", "Bla", "Sp2", "Dme", "Eba", "Aae", "Tca", "Ame", "Bge", "Cdi", "Sma", "Obi", "Bmo"]
+  batch_number: 200 # default 200
+  type_iupred: "long"  # long, short or glob

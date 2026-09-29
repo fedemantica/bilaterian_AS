@@ -1,0 +1,155 @@
+{
+  "__default__" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "default",
+    "ram" : "5G",
+    "time" : "00:20:00",
+    "disk" : "2G",
+    "queue" : "vshort"
+  },
+  "RefALT":
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "RefALT",
+    "ram" : "1G",
+    "time" : "00:04:00",
+    "disk" : "2G",
+    "queue" : "vshort"
+  },
+  "Incorporate_FakeTranscripts1":
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "Incorporate_FakeTranscripts1",
+    "ram" : "1G",
+    "time" : "00:01:00",
+    "disk" : "2G",
+    "queue" : "vshort"
+  },
+  "Incorporate_FakeTranscripts2" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "Incorporate_FakeTranscripts2",
+    "ram" : "8G",
+    "time" : "00:07:00",
+    "disk" : "2G",
+    "queue" : "vshort"
+  },
+  "GetCDS_annot_from_GTF" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "GetCDS_annot_from_GTF",
+    "ram" : "5G",
+    "time" : "00:03:30",
+    "disk" : "2G",
+    "queue" : "vshort"
+  },
+  "CDS_prot_parse" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "CDS_prot_parse",
+    "ram" : "1G",
+    "time" : "00:02:00",
+    "disk" : "2G",
+    "queue" : "vshort" 
+  },
+  "FileStruct_Parts" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "FileStruct_Parts",
+    "ram" : "1G",
+    "time" : "00:10:00",
+    "disk" : "1G",
+    "queue" : "vshort" 
+  },
+   "PFAMinput" :
+   {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "PFAMinput",
+    "ram" : "1G",
+    "time" : "00:03:00",
+    "disk" : "1G",
+    "queue" : "vshort" 
+  },
+   "Run_PFAM_By_Batch" :
+   {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "Run_PFAM_By_Batch",
+    "ram" : "2G",
+    "time" : "00:10:00",
+    "disk" : "1G",
+    "queue" : "vshort" 
+  },
+  "Combine_Parsed_PFAM" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "Combine_Parsed_Pfam",
+    "ram" : "1G",
+    "time" : "00:02:00",
+    "disk" : "1G",
+    "queue" : "vshort" 
+  },   
+  "RefDomTab_VastDB" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "RefDomTab_VastDB",
+    "ram" : "5G",
+    "time" : "00:05:00",
+    "disk" : "2G",
+    "queue" : "vshort" 
+  },
+  "Run_Iupred_By_Batch" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.err",
+    "name" : "Run_Iupred_By_Batch.{wildcards}",
+    "ram" : "1G",
+    "time" : "00:04:00",
+    "disk" : "2G",
+    "queue" : "vshort"
+  },
+  "Combine_Parsed_Iupred" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.err",
+    "name" : "Combine_Parsed_Iupred",
+    "ram" : "2G",
+    "time" : "00:02:00",
+    "disk" : "2G",
+    "queue" : "vshort" 
+  },
+  "RefDisTab_VastDB" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.err",
+    "name" : "RefDisTab_VastDB",
+    "ram" : "21G",
+    "time" : "00:05:00",
+    "disk" : "2G",
+    "queue" : "vshort" 
+  },
+  "Clean_Domain_Analysis" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "CleanDom",
+    "ram" : "2G",
+    "time" : "00:05:00",
+    "disk" : "2G",
+    "queue" : "vshort" 
+  },
+  "Clean_Disorder_Analysis" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "CleanDis",
+    "ram" : "2G",
+    "time" : "00:10:00",
+    "disk" : "2G",
+    "queue" : "vshort" 
+  }, 
+  "Clean_Final" :
+  {
+    "qsub" : "sbatch -o ./logs/%j.{rule}.{wildcards}.out -e ./logs/%j.{rule}.{wildcards}.out",
+    "name" : "CleanFinal",
+    "ram" : "2G",
+    "time" : "00:12:00",
+    "disk" : "2G",
+    "queue" : "vshort" 
+  }
+}

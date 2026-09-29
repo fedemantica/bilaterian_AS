@@ -1,0 +1,621 @@
+########## config file #########
+configfile: "config.yaml"
+
+########## paths #########
+DIR_DATA = config["paths"]["data"]
+PFAM_LIB = config["paths"]["pfamlib"]
+DIR_BIN = config["paths"]["bin"]
+
+########## tools #########
+EXORTHIST_GENERATE_ANNOT_A1= config["tools"]["ExOrthist_A1"]
+
+GETCDS_ANNOT = config["tools"]["GetCDS_annot_from_GTF"]
+TRANSLATE = config["tools"]["translate"]
+
+PARSE_CDS_UTR = config["tools"]["Parse_CDS_UTR"]
+PARSE_CDSPROT_ANNOT = config["tools"]["Parse_CDSprot_annot"]
+
+STRUCTURE_DATA = config["tools"]["StructureData"]
+PFAM_SCAN = config["tools"]["Pfam_Scan"]
+PARSE_DOM_PFAM = config["tools"]["Parse_parsed_pfamout"]
+DOM_REF_VastDB = config["tools"]["DomXexon_VastDB"]
+
+RUN_IUPRED = config["tools"]["Iupred2a"]
+PARSE_IUPRED_BATCHES = config["tools"]["Parse_Iupred_Batch"]
+
+DIS_REF_VastDB = config["tools"]["DisXexon_VastDB"] 
+########## variables #########
+SP = config["variables"]["specie"]
+BATCH_NUMBER = config["variables"]["batch_number"]
+BATCH_NUMBER_LIST = list(range(1,BATCH_NUMBER+1)) 
+TYPE_DISORDER_ANALYSIS = config["variables"]["type_iupred"]
+
+
+########## targets #########
+# Intermediate files (temporal with exceptions)
+Extra_Exons = expand("{path}/{specie}/{specie}_extraexons.tab", path=DIR_DATA, specie=SP)
+FakeGTF_annot = expand("{path}/{specie}/{specie}_annot_fake.gtf.gz", path=DIR_DATA, specie=SP)
+
+CDS_annot = expand("{path}/{specie}/{specie}_CDS_annot.fasta", path=DIR_DATA, specie=SP)
+prot_annot = expand("{path}/{specie}/{specie}_prot_annot.fasta", path=DIR_DATA, specie=SP)
+
+OKex =  expand("{path}/{specie}/{specie}_OKex.tab", path=DIR_DATA, specie=SP)
+CDS_annot_parsed = expand("{path}/{specie}/{specie}_CDS_annot_parsed.tab", path=DIR_DATA, specie=SP)
+CDS_prot_parsed = expand("{path}/{specie}/{specie}_prot_annot_parsed.tab", path=DIR_DATA, specie=SP)
+
+PfamFastas = expand("{path}/{specie}/DISDOM/PFAM/FASTAS/{specie}_{batch}.fasta", path=DIR_DATA, specie=SP, batch=BATCH_NUMBER_LIST)
+PfamOUTs =  expand("{path}/{specie}/DISDOM/PFAM/OUTs/{specie}_{batch}_pfamOut.csv", path=DIR_DATA, specie=SP, batch=BATCH_NUMBER_LIST)  
+PFAM_RES  =  expand("{path}/{specie}/DISDOM/PFAM/{specie}_pfam_parsed_sorted.tab", path=DIR_DATA, specie=SP)   
+PFAM_DOM = expand("{path}/{specie}/{specie}_prot_annot-PFAM.tab", path=DIR_DATA, specie=SP)
+
+LocationF_iupred = expand("{path}/{specie}/DISDOM/{specie}-locationFiles.tab", path=DIR_DATA, specie=SP)
+Parts_For_IUPRED = expand("{path}/{specie}/DISDOM/PARTS/{specie}_{batch}", path=DIR_DATA, specie=SP, batch=BATCH_NUMBER_LIST)
+iupred_out_by_batch = expand("{path}/{specie}/DISDOM/DISORDER/BATCH_LOG_IUPRED/{specie}_{batch}_run_proteins.txt", path=DIR_DATA, specie=SP, batch=BATCH_NUMBER_LIST)
+iupred_parsed_by_batch = expand("{path}/{specie}/DISDOM/DISORDER/IUPRED_batches/{specie}_{batch}_parsed.txt", path=DIR_DATA, specie=SP, batch=BATCH_NUMBER_LIST)
+iupred_result = expand("{path}/{specie}/{specie}-iupred_result.txt", path=DIR_DATA, specie=SP)
+
+# MAIN TARGETS (NO COMPRESSED, WITH ALL INTERMEDIATE FILES)
+DisREF_VastDB = expand("{path}/{specie}/REFERENCE-ALL_ANNOT-{specie}-DisI-v2.tab", path=DIR_DATA, specie=SP) 
+DomREF_VastDB = expand("{path}/{specie}/REFERENCE-ALL_ANNOT-{specie}-PFAM-v2.tab", path=DIR_DATA, specie=SP) 
+
+# CLEAN UP (TO OBTAIN MAIN FILES COMPRESSED, DELETE MOST INTERMEDIATE FILES AND KEEP-COMPRESS A FEW OTHERS)
+CLEAN_DOM =  expand("{path}/{specie}/CLEANED-PFAM-Files-{specie}.txt", path=DIR_DATA, specie=SP)
+CLEAN_DIS =  expand("{path}/{specie}/CLEANED-IUPRED-Files-{specie}.txt", path=DIR_DATA, specie=SP)
+CLEAN_LOG = expand("{path}/{specie}/LOG-{specie}_DISDOM.txt", path=DIR_DATA, specie=SP)
+
+########## rules #########
+
+
+rule all:
+	input:
+		CLEAN_LOG
+
+ 
+# DomREF_VastDB,
+# DisREF_VastDB,
+# CLEAN_DOM,
+# CLEAN_DIS
+
+
+##############
+
+# DATA PREPARATION
+
+# Incorporate VastDB events into GTF information
+
+rule Incorporate_FakeTranscripts1:
+	input:
+		refALLannot = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}.tab",
+		eventID_geneID = DIR_DATA+"/{specie}/{specie}.Event-Gene.IDs.txt"
+	
+	output:
+		extraExons = DIR_DATA+"/{specie}/{specie}_extraexons.tab"
+	
+	params:
+		Outdir=directory(DIR_DATA),
+		sorted_EvIDGeID = DIR_DATA+"/{specie}/sorted.{specie}.Event-Gene.IDs.txt",
+                sorted_REF = DIR_DATA+"/{specie}/sorted.REFERENCE-ALL_ANNOT-{specie}.tab",
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Data.txt"
+
+	shell:
+		"""
+		echo -e "ExonID\tGeneID\tExon_coords_A\tC1_Ref\tC2_Ref" > {output.extraExons};
+		cat {input.eventID_geneID} | grep -v "^Event" | sort -t $'\t' -k1,1 > {params.sorted_EvIDGeID};
+		cat {input.refALLannot} | grep -v "^GENE" | awk -v FS="\t" -v OFS="\t" '$2~"EX" {{print $2,$10,$9,$11}}' | sort -t $'\t' -k1,1 > {params.sorted_REF};
+		join -t $'\t' <(cat {params.sorted_EvIDGeID}) <(cat {params.sorted_REF}) >> {output.extraExons};	
+		rm {params.sorted_EvIDGeID} {params.sorted_REF};
+		num_genes=$(cat {output.extraExons} | cut -f2 | sort | uniq | wc -l);
+		num_genes=$(echo -n "$num_genes" | xargs);
+		today=$(date);
+		echo -e "------INCORPORATION OF FAKE EXONS INTO GTF $today------\n\n1-Incorporated GeneID to reference file for $num_genes genes.\nOutput:\n\t{output.extraExons}\nInput:\n\t{input.refALLannot} \n\t{input.eventID_geneID} \n" >> {params.Log};
+
+		"""
+	
+rule Incorporate_FakeTranscripts2:
+	input:
+		annotGTF = DIR_DATA+"/{specie}/{specie}_annot.gtf", 
+		gDNAfasta = DIR_DATA+"/{specie}/{specie}_gDNA.fasta", 
+		extraExons = DIR_DATA+"/{specie}/{specie}_extraexons.tab"
+	output:
+		annotFakeGTF = DIR_DATA+"/{specie}/{specie}_annot_fake.gtf.gz"
+	params:
+		Outdir=DIR_DATA,
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Data.txt",
+		fakeT= DIR_DATA+"/{specie}/FakeTranscripts-{specie}-vB.gtf",
+		scriptLog=DIR_DATA+"/{specie}/LOG_FakeTranscripts-{specie}-vB.tab"	
+	shell:
+		"""
+		perl {EXORTHIST_GENERATE_ANNOT_A1} -GTF {input.annotGTF} -G {input.gDNAfasta} -sp {wildcards.specie} -add_exons {input.extraExons} -EX_DB {params.Outdir};
+		CDS_gtf_original=$(cat {input.annotGTF} | awk -v FS="\t" -v OFS="\t" '$3=="CDS" {{print $9}}'| sed 's/.*transcript_id/transcript_id/g' | awk -v FS=" " '{{print $2}}' | sort | uniq | wc -l);
+		CDS_gtf_original=$(echo -n "$CDS_gtf_original" | xargs);
+		CDS_gtf_fake=$(zmore {output.annotFakeGTF} | awk -v FS="\t" -v OFS="\t" '$3=="CDS" {{print $9}}'| sed 's/.*transcript_id/transcript_id/g' | awk -v FS=" " '{{print $2}}' | sort | uniq | wc -l);
+		CDS_gtf_fake=$(echo -n "$CDS_gtf_fake" | xargs);
+		echo -e "\n2-Fake exons incorporated to the GTF.\nScript:\n\t{EXORTHIST_GENERATE_ANNOT_A1}\nInput files:\n\t{input.extraExons}\n\t{input.annotGTF}\n\t{input.gDNAfasta}\nOutput files:\n\t{output.annotFakeGTF}\n\t{params.fakeT}\n\t{params.scriptLog}\n\nCDS in original GTF: $CDS_gtf_original \nCDS with fake annotations: $CDS_gtf_fake\n" >> {params.Log};
+		"""
+
+# Obtain sequences (CDS=DNA, protein) per protein
+
+rule GetCDS_annot_from_GTF:
+	input: 
+		annotGTF = DIR_DATA+"/{specie}/{specie}_annot_fake.gtf.gz",
+		gDNAfasta = DIR_DATA+"/{specie}/{specie}_gDNA.fasta"
+	
+	output: 
+		OutCDS = DIR_DATA+"/{specie}/{specie}_CDS_annot.fasta",
+		OutProt = DIR_DATA+"/{specie}/{specie}_prot_annot.fasta"
+ 		
+	params:
+		OutOFF_fasta = DIR_DATA+"/{specie}/{specie}_CDS_annot-off.fasta",
+		dataDir = DIR_DATA+"/{specie}",
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Data.txt"
+
+	shell:
+		"""
+		today=$(date);
+		echo -e "\n--------- DATA PREPARATION $today ---------\n\n1-Generation of fasta files for CDS and protein sequences.\nScripts:\n\t{GETCDS_ANNOT}\n\t{TRANSLATE}\nInput files:\n\t{input.annotGTF}\n\t{input.gDNAfasta}\nOutput files:\n\t{output.OutCDS}\n\t{output.OutProt}\n" >> {params.Log};
+		perl {GETCDS_ANNOT} {input.annotGTF} {input.gDNAfasta} {wildcards.specie} {params.dataDir} {params.Log};
+		perl {TRANSLATE} {params.OutOFF_fasta};
+		rm {params.OutOFF_fasta};
+
+		Prots=$(cat {output.OutProt} | grep "^>"| wc -l);
+		Prots=$(echo -n "$Prots" | xargs);
+		PMultiexon=$(cat {output.OutProt} | grep "^>"| grep ";" | wc -l);
+		PMultiexon=$(echo -n "$PMultiexon" | xargs);
+		echo -e "\nProteins annotated:\n\tTotal: $Prots \n\tMultiexon proteins: $PMultiexon\n" >> {params.Log};
+	
+		"""	
+		
+# Parse sequences to have them per exon
+		
+rule CDS_prot_parse:
+	input: 
+		annotGTF = DIR_DATA+"/{specie}/{specie}_annot_fake.gtf.gz",
+		annotCDS = DIR_DATA+"/{specie}/{specie}_CDS_annot.fasta",
+		annotProt = DIR_DATA+"/{specie}/{specie}_prot_annot.fasta"	
+	output:
+		OKex = DIR_DATA+"/{specie}/{specie}_OKex.tab",
+		CDS_parsed = DIR_DATA+"/{specie}/{specie}_CDS_annot_parsed.tab",
+		prot_parsed = DIR_DATA+"/{specie}/{specie}_prot_annot_parsed.tab"
+	params:
+		data_path=DIR_DATA,
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Data.txt"
+
+	shell:
+		"""
+		echo -e "\n2-Parsing CDS and protein sequences, as fasta files.\nScripts:\n\t{PARSE_CDS_UTR}\n\t{PARSE_CDSPROT_ANNOT}\nInput:\n\t{input.annotGTF}\n\t{input.annotCDS}\n\t{input.annotProt}\nOutput:\n\t{output.OKex}\n\t{output.CDS_parsed}\n\t{output.prot_parsed} \n" >> {params.Log};
+		perl {PARSE_CDS_UTR} {input.annotGTF} {wildcards.specie} {params.data_path} {params.Log};
+		perl {PARSE_CDSPROT_ANNOT} {output.OKex} {input.annotCDS} {input.annotProt} {wildcards.specie} {params.data_path} {params.Log};
+		"""	
+
+	
+# Input and output structure for IUPRED and PFAM
+
+rule FileStruct_Parts:
+	input: 
+		annotProt = DIR_DATA+"/{specie}/{specie}_prot_annot.fasta",
+		OKex = DIR_DATA+"/{specie}/{specie}_OKex.tab",
+		CDS_parsed = DIR_DATA+"/{specie}/{specie}_CDS_annot_parsed.tab",
+		prot_parsed = DIR_DATA+"/{specie}/{specie}_prot_annot_parsed.tab"
+	output:
+		locationFile = DIR_DATA+"/{specie}/DISDOM/{specie}-locationFiles.tab",
+		batchFastaFolder = directory(expand(DIR_DATA+"/{{specie}}/DISDOM/PARTS/{{specie}}_{batch}", batch=BATCH_NUMBER_LIST))
+	params:
+		batches = BATCH_NUMBER,
+		dirpath=DIR_DATA,
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Data.txt"
+	shell:
+		"""
+		echo -e "\n\n3-Split protein sequences.\nProtein sequences from input file are split into individual fasta files (one per protein) and stored in batches ({params.batches} folders) for Iupred2a analysis.\nInput file:\n\t{input.annotProt}\n">> {params.Log};
+		perl {STRUCTURE_DATA} {input.annotProt} {wildcards.specie} {params.dirpath} {params.batches} {params.Log};
+		"""
+
+
+rule PFAMinput:
+	input:
+		locationFile = DIR_DATA+"/{specie}/DISDOM/{specie}-locationFiles.tab"	
+	output:
+		pfamFASTA = DIR_DATA+"/{specie}/DISDOM/PFAM/FASTAS/{specie}_{batch}.fasta"
+     	
+	params:
+		dirFastas = directory(DIR_DATA+"/{specie}/DISDOM/PARTS/{specie}_{batch}"),
+		Batches = BATCH_NUMBER,
+		parts_path=directory(DIR_DATA+"/{specie}/DISDOM/PARTS"),
+		dataPFAM = directory(DIR_DATA+"/{specie}/DISDOM/PFAM"),
+		dataPfamFASTAS = directory(DIR_DATA+"/{specie}/DISDOM/PFAM/FASTAS"),
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Data.txt"
+	shell:
+		"""
+
+		numBatchesLS=$(ls {params.parts_path} | wc -l);
+                numBatchesLS=$(echo -n "$numBatchesLS" | xargs);
+                
+		numBatchesLocF=$(cat {input.locationFile} | cut -f2 | sort | uniq | wc -l);
+		numBatchesLocF=$(echo -n "$numBatchesLocF" | xargs);
+		today=$(date);
+		if [ $numBatchesLS -eq {params.Batches} ] && [ $numBatchesLocF -eq {params.Batches} ]  ; then
+			numProtsLS=$(ls {params.parts_path}/{wildcards.specie}_{wildcards.batch} | wc -l);
+			numProtsLS=$(echo -n "$numProtsLS" | xargs);			
+
+			numProtsLocF=$(cat {input.locationFile} | grep "{wildcards.specie}_{wildcards.batch}$" | wc -l);
+			numProtsLocF=$(echo -n "$numProtsLocF" | xargs);
+
+			if [ $numProtsLS -eq $numProtsLocF ] ; then
+				grep -h "" {params.dirFastas}/*  > {output.pfamFASTA};
+			fi
+		fi
+		if [ "{wildcards.batch}" = "{params.Batches}" ] ; then
+				echo -e "\n\n4-Protein fasta files have been collapsed by batch for Pfam analysis: all proteins in  $numBatchesLS fasta files (one per batch).\n\n ------------- DATA PREPARATION FINISHED -----------\n\n\n" >> {params.Log};
+		fi
+		"""
+
+
+# FUNCTIONAL DOMAINS (PFAM)
+
+rule Run_PFAM_By_Batch:
+	input:
+		pfamFASTA = DIR_DATA+"/{specie}/DISDOM/PFAM/FASTAS/{specie}_{batch}.fasta"
+	output:
+		pfamOUT = DIR_DATA+"/{specie}/DISDOM/PFAM/OUTs/{specie}_{batch}_pfamOut.csv",
+		pfamParsed = DIR_DATA+"/{specie}/DISDOM/PFAM/OUT_parsed/{specie}_{batch}_pfam_parsed.tab"
+
+	params:
+		dirPFAMo = directory(DIR_DATA+"/{specie}/DISDOM/PFAM/OUTs"),
+		pfam_lib = directory(PFAM_LIB),
+		evalue = 0.1,
+		cpus = 1,
+		parseddir= DIR_DATA+"/{specie}/DISDOM/PFAM/OUT_parsed",
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Dom.txt",
+		Batches=BATCH_NUMBER
+
+	shell:
+		"""
+		if [[ ! -d {params.dirPFAMo} ]]; then
+			mkdir -p {params.dirPFAMo}
+		fi
+		module load HMMER/3.3.2-gompi-2022a;
+		today=$(date);
+		{PFAM_SCAN} -evalue {params.evalue} -cpu {params.cpus} {input.pfamFASTA} {params.pfam_lib} > {output.pfamOUT};
+		cat {output.pfamOUT} | sed 's/seq_id/gene|protein/g' | awk -v FS="," -v OFS="\t" '$7!="" {{split($1, head, "|"); gid = head[1]; pid = head[2] ; print gid,pid,$4,$5,$6,$7,$15;}}' | tail -n +2 > {output.pfamParsed} ; 
+		
+		if [ "{wildcards.batch}" = "{params.Batches}" ]; then
+			echo -e "\n------------- FUNCTIONAL DOMAINS: PFAM $today ------------\n\n1-Finding functional domains in protein sequences.\nAlgorithm (in script):\n\tHMMER/3.3.2-gompi-2022a\nPFAM libraries in:\n\t {params.pfam_lib}\n\nA total of {params.Batches} batches are being analyzed.\nMain script:\n\t{PFAM_SCAN}\n\nOutput:\n\tRaw result: csv files, one per batch\n\tParsed result: tab files, one per batch (parsed csv)\n" >> {params.Log};
+		fi
+		"""
+rule Combine_Parsed_PFAM:
+	input:
+		pfamParsed_batch=expand("{data_path}/{{specie}}/DISDOM/PFAM/OUT_parsed/{{specie}}_{batch}_pfam_parsed.tab", data_path=DIR_DATA, batch=BATCH_NUMBER_LIST),
+		prot_parsed = DIR_DATA+"/{specie}/{specie}_prot_annot_parsed.tab"
+	output:
+		pfamRes = DIR_DATA+"/{specie}/DISDOM/PFAM/{specie}_pfam_parsed_sorted.tab",
+		pfamDOM = DIR_DATA+"/{specie}/{specie}_prot_annot-PFAM.tab"
+	
+	params:
+		Batches = BATCH_NUMBER,
+		dirParsed = DIR_DATA+"/{specie}/DISDOM/PFAM/OUT_parsed",
+		temp = DIR_DATA+"/{specie}/DISDOM/PFAM/{specie}_pfam_temp_parsed.tab",
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Dom.txt"
+
+	shell:
+		"""
+		numParsedPfam=$(find {params.dirParsed} -name "*.tab" -size +0 | wc -l );
+		numParsedPfam=$(echo -n "$numParsedPfam" | xargs);
+		#echo "Number of files: $numParsedPfam";
+		if [ "$numParsedPfam" = "{params.Batches}" ]; then
+			#echo "All $numParsedPfam files are there";
+			cat {input.pfamParsed_batch} > {params.temp};
+			#echo "The {params.temp} is created";
+			echo -e "GENE\tPROTEIN\tSTART\tSTOP\tID\tNAME\tCLAN" > {output.pfamRes};
+			cat {params.temp} | sort -t $'\t' -k2,2 -k3n -k4n >> {output.pfamRes};
+			rm {params.temp};
+			echo -e "\n2-Combination of PFAM results.\nPfam domains for all proteins (all results per batch) are parsed, sorted and collapsed.\nOutput:\n\t{output.pfamRes}\n" >> {params.Log} ; 
+		fi
+		{PARSE_DOM_PFAM} {output.pfamRes} {input.prot_parsed} {output.pfamDOM};
+		
+		echo -e "\n3-Parsing of results.\nScript:\n\t{PARSE_DOM_PFAM}\nOutput:\n\t{output.pfamDOM}\n" >> {params.Log} ;    
+		"""
+
+
+rule RefDomTab_VastDB:
+	input:
+		pfamDOM = DIR_DATA+"/{specie}/{specie}_prot_annot-PFAM.tab",
+		refALLannot = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}.tab",
+		eventID_geneID = DIR_DATA+"/{specie}/{specie}.Event-Gene.IDs.txt"
+	output:
+		DomRef = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}-PFAM-v2.tab"
+
+	params:
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Dom.txt",
+		WarningLog = DIR_DATA+"/{specie}/LOG_{specie}-Warnings-RefDom.txt", 		
+		data_path = DIR_DATA
+	
+	shell:
+		"""
+		today=$(date);
+		echo -e "\n\nMissing exons:\nWarnings in creating REFERENCE file with functional domains (PFAM) per exon:\n" > {params.WarningLog}; 
+		perl {DOM_REF_VastDB} {input.pfamDOM} {input.refALLannot} {input.eventID_geneID} {output.DomRef} {params.WarningLog};
+		
+		RefOriginal=$(tail -n +2 {input.refALLannot} | wc -l)		
+		RefOriginal=$(echo -n "$RefOriginal" | xargs)
+
+		RefDom=$(tail -n +2 {output} | wc -l) 
+		RefDom=$(echo -n "$RefDom" | xargs)
+				
+		num_missing=$(comm -23 <(cut -f2 {input.refALLannot} | sort) <(cut -f2 {output} | sort) | wc -l);
+		num_missing=$(echo -n "$num_missing" | xargs)
+
+		if [ $num_missing -ne 0 ]; then
+			num_exmiss=$(comm -23 <(cut -f2 {input.refALLannot} | grep "EX" | sort) <(cut -f2 {output} | grep "EX" | sort) | wc -l );
+			num_exmiss=$(echo -n "$num_exmiss" | xargs);
+		else 
+			num_exmiss="0";
+		fi
+		echo -e "\n4-Functional domains overlapping EX exons obtained.\nScript:\n\t{DOM_REF_VastDB}\nOutput:\n\t{output}\n" >> {params.Log};
+
+		echo -e "\nThe original REFERENCE file contained $RefOriginal lines, and the output, $RefDom lines.\nA total of $num_missing events are missing; $num_exmiss EX events.\n\nNumber of events of each type:" >> {params.Log};
+		cut -f2 {output} | grep -v "^EVENT"| sed 's/[0-9]//g' | sort | uniq -c >> {params.Log};
+		echo -e "\n\n-------------- PFAM RESULTS OBTAINED: REFERENCE PFAM  $today ----------\n\n\n" >> {params.WarningLog};
+		"""
+
+
+##### DISORDER RATE
+
+rule Run_Iupred_By_Batch:
+	input:
+		locationFile = DIR_DATA+"/{specie}/DISDOM/{specie}-locationFiles.tab"
+	output:
+		prot_analysed_iupred = DIR_DATA+"/{specie}/DISDOM/DISORDER/BATCH_LOG_IUPRED/{specie}_{batch}_run_proteins.txt",
+		batch_iupred_parsed = DIR_DATA+"/{specie}/DISDOM/DISORDER/IUPRED_batches/{specie}_{batch}_parsed.txt"
+
+	params:
+		dirGeneral = DIR_DATA,
+		data_path = DIR_DATA+"/{specie}/DISDOM/DISORDER",
+		inpartsD = DIR_DATA+"/{specie}/DISDOM/PARTS/{specie}_{batch}",
+		outpartsD = DIR_DATA+"/{specie}/DISDOM/DISORDER/IUPRED_PARTS",
+		outpartsFolderD = DIR_DATA+"/{specie}/DISDOM/DISORDER/IUPRED_PARTS/{specie}_{batch}",
+		batchlogD = DIR_DATA+"/{specie}/DISDOM/DISORDER/BATCH_LOG_IUPRED",
+		iupredbatchesD = DIR_DATA+"/{specie}/DISDOM/DISORDER/IUPRED_batches",
+		Type_Disorder_Analysis = TYPE_DISORDER_ANALYSIS,
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Dis.txt",
+		Batches = BATCH_NUMBER
+	shell:
+		"""
+		PROTEINS=$(awk -v FS='\\t' '$2=="{wildcards.specie}_{wildcards.batch}" {{print $1}}' {input.locationFile})
+		if [[ ! -d {params.outpartsFolderD} ]]; then
+			mkdir -p {params.outpartsFolderD}
+		fi
+
+		if [[ ! -d {params.batchlogD} ]]; then
+			mkdir -p {params.batchlogD}
+		fi
+	
+		for protein in $PROTEINS; do 
+			path_in="{params.inpartsD}/$protein.fasta"
+			path_out="{params.outpartsFolderD}/$protein.iupred"
+			
+			{RUN_IUPRED} $path_in {params.Type_Disorder_Analysis} > $path_out
+
+			aa_seq=$(cat $path_in | grep -v "^>" |awk '{{printf "%s",$0}}'| wc -c)
+			aa_dis=$(cat $path_out | grep -v "^#" | wc -l)
+			aa_dif=$((aa_seq - aa_dis))
+			aa_seq=$(echo -n "$aa_seq" | xargs)
+			aa_dis=$(echo -n "$aa_dis" | xargs)
+			
+			echo -e "$protein\t$aa_seq/$aa_dis\t$aa_dif" >> {output.prot_analysed_iupred}
+		done
+		
+		{PARSE_IUPRED_BATCHES} {wildcards.specie} {wildcards.batch} {params.outpartsD} {params.iupredbatchesD};
+		
+		if [ "{wildcards.batch}" = "{params.Batches}" ]; then 
+			today=$(date);
+			echo -e "\n--------- DIOSORDERED REGIONS ANALYSIS WITH IUPRED2A $today ---------\n\n1-Disorder probability for the residues estimated with Iupred2a.\nA total of {params.Batches} batches are expected to be analyzed. An '.iupred' file obtained per protein and stored in its corresponding batch folder.\n\n\n2-Parsing of raw results\nRaw iupred results for proteins in each batch have been parsed and combined (per batch).\nScript:\n\t{PARSE_IUPRED_BATCHES}\n" >> {params.Log};
+		fi	
+		"""
+
+rule Combine_Parsed_Iupred:
+	input:
+		batch_iupred_parsed = expand("{data_path}/{{specie}}/DISDOM/DISORDER/IUPRED_batches/{{specie}}_{batch}_parsed.txt", data_path=DIR_DATA, batch=BATCH_NUMBER_LIST),
+		batch_logs_iupred = expand("{data_path}/{{specie}}/DISDOM/DISORDER/BATCH_LOG_IUPRED/{{specie}}_{batch}_run_proteins.txt", data_path=DIR_DATA, batch=BATCH_NUMBER_LIST)
+	
+	output:
+		combined_iupred =  DIR_DATA+"/{specie}/{specie}-iupred_result.txt"
+
+	params:
+		control_iupred = DIR_DATA+"/{specie}/DISDOM/DISORDER/{specie}-iupred_log_control.txt",
+		batch_log_folder=directory(DIR_DATA+"/{specie}/DISDOM/DISORDER/BATCH_LOG_IUPRED"),
+		iupred_batch_folder=directory(DIR_DATA+"/{specie}/DISDOM/DISORDER/IUPRED_batches"),
+		out_folder=directory(DIR_DATA+"/{specie}/DISDOM/DISORDER"),
+		tot_batches=BATCH_NUMBER,
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Dis.txt"
+
+	shell:
+		"""
+		numF_log=$(ls {params.batch_log_folder} | wc -l)
+		numF_log=$(echo -n "$numF_log" | xargs)
+		
+		numR_files=$(ls {params.iupred_batch_folder} | wc -l)
+		numR_files=$(echo -n "$numR_files" | xargs)
+		
+		today=$(date);
+		FINISHED="NO";	
+		
+		if [ $numF_log -eq {params.tot_batches} ]; then
+			cat {input.batch_logs_iupred} > {params.control_iupred}
+			problems=$(cat {params.control_iupred} | cut -f3 | sort | uniq)
+			problems=$(echo -n "$problems" | xargs)
+			
+			if [ $problems -eq 0 ]; then
+				#echo "GOOD";
+				if [ $numR_files -eq {params.tot_batches} ]; then
+					FINISHED="YES";
+					cat {input.batch_iupred_parsed} > {output.combined_iupred};
+					echo "Results are ready on $today!"
+					prots=$(cat {output.combined_iupred} | cut -f1 | sort | uniq | wc -l);
+					prots=$(echo -n "$prots" | xargs);
+					echo -e "\n3-Combination of Iupred2a results.\nA total of $prots proteins have been analysed in {params.tot_batches} batches with iupred. Results have been parsed and collapsed into a single final file (disorder score/residue).\nOutput:\n\t{output.combined_iupred}\n" >> {params.Log};
+				else
+					echo -e "\n\nProblem with Iupred analysis on $today\nExpected {params.tot_batches} files, but found $numR_files in {params.control_iupred}\n" >> {params.Log};
+				fi
+			else
+				echo -e "\n\nProblem with Iupred analysis on $today\nThere are problems with the parsing of the files!\n" >> {params.Log};
+				echo "There are problems with the parsing of the files!";
+			fi
+		else
+			echo "The number of log files is not {params.tot_batches} but $numF_log";
+			echo -e "\n\nProblem with Iupred analysis on $today\nThe number of log files is not what expected: {params.tot_batches} ,but $numF_log \n" >> {params.Log};
+		fi
+		"""
+
+rule RefDisTab_VastDB:
+	input:
+		combined_iupred =  DIR_DATA+"/{specie}/{specie}-iupred_result.txt",
+		prot_parsed = DIR_DATA+"/{specie}/{specie}_prot_annot_parsed.tab",
+		refALLannot = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}.tab",
+		eventID_geneID = DIR_DATA+"/{specie}/{specie}.Event-Gene.IDs.txt"
+	output:
+		DisRef = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}-DisI-v2.tab"
+
+	params:
+		Log = DIR_DATA+"/{specie}/{specie}_LOG_Dis.txt",
+		WarningLog = DIR_DATA+"/{specie}/LOG_{specie}-Warnings-RefDis.txt", 		
+		data_path = DIR_DATA
+	
+	shell:
+		"""
+		today=$(date);	
+		echo "I started the rule, message to debug"
+		echo -e "\n\nMissing exons:\nWarnings in creating REFERENCE file with disorder rate (IUPRED2a) per exon:\n" > {params.WarningLog};
+		perl {DIS_REF_VastDB} {input.combined_iupred} {input.prot_parsed} {input.refALLannot} {input.eventID_geneID} {wildcards.specie} {output} {params.WarningLog};
+		RefOriginal=$(tail -n +2 {input.refALLannot} | wc -l)		
+		RefOriginal=$(echo -n "$RefOriginal" | xargs)
+
+		RefDis=$(tail -n +2 {output} | wc -l) 
+		RefDis=$(echo -n "$RefDis" | xargs)
+				
+		num_missing=$(comm -23 <(cut -f2 {input.refALLannot} | sort) <(cut -f2 {output} | sort) | wc -l);
+		num_missing=$(echo -n "$num_missing" | xargs)
+		echo "Number of missing exons is: $num_missing"
+
+		if [[ $num_missing -ne 0 ]]; then
+			echo "ENTERED THE IF"	
+			num_exmiss=$(comm -23 <(cut -f2 {input.refALLannot} | grep "EX" | sort) <(cut -f2 {output} | grep "EX" | sort) |\
+			wc -l);
+			echo "What happens with num_exmiss?: $num_exmiss"
+			num_exmiss=$(echo -n "$num_exmiss" | xargs);
+			echo "The num_exmiss is calculated, and it's $num_exmiss"
+		else 
+			echo "I AM IN THE ELSE"
+			num_exmiss="0";
+		fi
+		echo "I am out of the if, now num_exmiss is $num_exmiss"
+ 		echo -e "\n4-Disorder rate for exons obtained.\nScript:\n\t{DIS_REF_VastDB}\nOutput:\n\t{output}\n" >> {params.Log};
+		
+		echo -e "\nThe original REFERENCE file contained $RefOriginal lines, and the output, $RefDis lines.\nA total of $num_missing events are missing; $num_exmiss EX events.\n\nNumber of events of each type:" >> {params.Log};
+		echo "I am before of the cut"
+		cut -f2 {output} | grep -v "^EVENT"| sed 's/[0-9]//g' | sort | uniq -c >> {params.Log};
+		echo -e "\n\n---------- IUPRED RESULTS: REFERENCE DISORDER RATES OBTAINED $today --------\n\n\n" >> {params.WarningLog};
+		echo "The rule should be over now..."
+		"""
+
+# CLEAN-UP AND KEEP MAIN TARGETS
+
+rule Clean_Domain_Analysis:
+	input:
+		DomRef = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}-PFAM-v2.tab"
+	output:
+		CleanLogDom = DIR_DATA+"/{specie}/CLEANED-PFAM-Files-{specie}.txt",
+		Comp_ProtParsSort = DIR_DATA+"/{specie}/{specie}_prot_annot-pfam-parsed-sorted.tab.gz",
+		Comp_ProtAnnot = DIR_DATA+"/{specie}/{specie}_prot_annot-PFAM.tab.gz"
+	params:
+		dirPFAM = DIR_DATA+"/{specie}/DISDOM/PFAM",
+		ProtParsSort = DIR_DATA+"/{specie}/DISDOM/PFAM/{specie}_pfam_parsed_sorted.tab",
+		ProtAnnot = DIR_DATA+"/{specie}/{specie}_prot_annot-PFAM.tab"
+	shell:
+		"""
+		gzip -c {params.ProtParsSort} > {output.Comp_ProtParsSort};
+		gzip {params.ProtAnnot};
+		rm -r {params.dirPFAM};
+		today=$(date);
+		echo -e "\n--Cleanup of functional Domains $today\nElimination of intermediate files generated for the analysis of functional domains for {wildcards.specie} (PFAM).\nCompression of:\n\tDomains per exon: {params.ProtAnnot}\n\tDomains per protein: {params.ProtParsSort}\n\n" > {output.CleanLogDom}; 
+		"""
+
+
+rule Clean_Disorder_Analysis:
+	input:
+		DisRef = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}-DisI-v2.tab",
+		iupredRes = DIR_DATA+"/{specie}/{specie}-iupred_result.txt"
+	
+	output:
+		CleanLogDis = DIR_DATA+"/{specie}/CLEANED-IUPRED-Files-{specie}.txt",
+		iupredResC = DIR_DATA+"/{specie}/{specie}-iupred_result.txt.gz"
+	params:
+		dirDis = DIR_DATA+"/{specie}/DISDOM/DISORDER"
+	shell:
+		"""
+		gzip {input.iupredRes};
+		rm -r {params.dirDis};
+		today=$(date);
+		echo -e "\n--Cleanup of Disordered regions $today\nElimination of intermediate files generated for the analysis of disorder rate for {wildcards.specie} (IUPRED2A).\nCompression of:\n\tIupred results per residue (with and without cutoff):\n\t{input.iupredRes}\n\n" > {output.CleanLogDis};            
+ 		"""
+
+
+rule Clean_Final:
+	input:
+		DisRef = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}-DisI-v2.tab",
+		DomRef = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}-PFAM-v2.tab",	
+		CleanLogDis = DIR_DATA+"/{specie}/CLEANED-IUPRED-Files-{specie}.txt",
+		CleanLogDom = DIR_DATA+"/{specie}/CLEANED-PFAM-Files-{specie}.txt"
+	output:
+		LogDay = DIR_DATA+"/{specie}/LOG-{specie}_DISDOM.txt",
+		DisRef = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}-DisI-v2.tab.gz",
+		DomRef = DIR_DATA+"/{specie}/REFERENCE-ALL_ANNOT-{specie}-PFAM-v2.tab.gz"
+	params:
+		dirDisDom = DIR_DATA+"/{specie}/DISDOM",
+		LogData = DIR_DATA+"/{specie}/{specie}_LOG_Data.txt",		
+		LogDis = DIR_DATA+"/{specie}/{specie}_LOG_Dis.txt",
+		LogDom = DIR_DATA+"/{specie}/{specie}_LOG_Dom.txt",
+		prot_parsed = DIR_DATA+"/{specie}/{specie}_prot_annot_parsed.tab",
+		CDS_parsed = DIR_DATA+"/{specie}/{specie}_CDS_annot_parsed.tab",
+		prot_annot = DIR_DATA+"/{specie}/{specie}_prot_annot.fasta",
+		CDS_annot = DIR_DATA+"/{specie}/{specie}_CDS_annot.fasta",
+		extraex = DIR_DATA+"/{specie}/{specie}_extraexons.tab",
+		OKex = DIR_DATA+"/{specie}/{specie}_OKex.tab",
+		DirG = DIR_DATA+"/{specie}",
+		CleanAll = DIR_DATA+"/{specie}/CLEANED-ALL-{specie}.txt",
+		WDis = DIR_DATA+"/{specie}/LOG_{specie}-Warnings-RefDis.txt",
+		WDom = DIR_DATA+"/{specie}/LOG_{specie}-Warnings-RefDom.txt"
+	shell:
+		"""
+		# Compression
+		gzip -9 {input.DisRef} {input.DomRef};
+		gzip -9 {params.prot_parsed} {params.CDS_parsed} {params.prot_annot} {params.CDS_annot} {params.extraex} {params.OKex};
+		
+		# Creation of final log
+		today=$(date);
+		echo -e "\n\n------ CLEANUP FOR DISORDER AND DOMAINS ANALYSIS $today------\n\n" > {params.CleanAll};
+		cat {input.CleanLogDis} {input.CleanLogDom} >> {params.CleanAll};
+		cat {params.LogData} {params.LogDis} {params.WDis} {params.LogDom} {params.WDom} {params.CleanAll} > {output.LogDay};	
+		
+		# Removing intermediate files
+		rm -r {params.dirDisDom};
+		rm {input.CleanLogDis} {input.CleanLogDom} {params.CleanAll} {params.LogData} {params.LogDis} {params.WDis} {params.LogDom} {params.WDom}; 
+		# Information final log
+		echo -e "--Final elimination or compression of the rest of temporary files.\n\n\n----------- SUMMARY OF RESULTS $today ----------\n\nTarget files:\n\t{output.DisRef}\n\t{output.DomRef}\n\nAll resulting files:" >> {output.LogDay};
+		ls -lht {params.DirG} | awk -v FS=" " -v OFS=" " '{{print "\t",$5,"-",$9,$10,$11}}' >> {output.LogDay}; 
+		
+		# Transforming paths
+		Dir={DIR_DATA};
+		Bin={DIR_BIN};
+		GdataD="data_folder";
+		GbinD="scripts_folder";
+		sed -i "s%$Dir%$GdataD%g" {output.LogDay};
+		sed -i "s%$Bin%$GbinD%g" {output.LogDay};
+		
+		# Information of paths and libraries
+		echo -e "\n\nData directory:\n\t$Dir\n\nScripts directory:\n\t$Bin\n\nPfam library folder:">> {output.LogDay};
+		ls -lht {PFAM_LIB} | awk -v FS=" " -v OFS=" " '{{print "\t",$9,$10,$11}}'>> {output.LogDay};
+		echo -e "\n\n\n --------- ANALYSIS FINISHED!!! ---------- \n\n\n" >> {output.LogDay};
+		"""
+	
+
+
+
