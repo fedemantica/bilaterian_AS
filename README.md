@@ -9,6 +9,7 @@ This repository contains the code used to investigate the evolution of tissue-sp
 
 ## Repository structure
 
+- `00_DIS_DOM/` – computation of dcomputation of disordered scores and domain predictions to be used in 03.  
 - `01_VAST_TOOLS_QUANT/` – quantification of alternative splicing using VAST-TOOLS.
 - `02_TS-AS_CALLS/` – identification of tissue-specific alternative splicing events and TS-AS genes.
 - `03_TS-AS_VS_TS-GE/` – comparative analyses of TS-AS and TS-GE genes.
